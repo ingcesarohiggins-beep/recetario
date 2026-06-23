@@ -1617,3 +1617,201 @@ body {
   opacity: 0.15;
   cursor: not-allowed;
 }
+
+/* ==========================================
+   VESSEL & UTENSILS STYLES
+   ========================================== */
+.utensils-checklist-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.utensil-check-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.utensil-check-item input[type="checkbox"] {
+  cursor: pointer;
+}
+
+.utensil-badge {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.2s;
+}
+
+.utensil-badge:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--active-theme-color);
+  color: var(--text-primary);
+}
+
+.utensil-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.utensil-item-row:last-child {
+  border-bottom: none;
+}
+
+.utensil-delete-btn {
+  background: transparent;
+  border: none;
+  color: #ff4757;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+
+.utensil-delete-btn:hover {
+  opacity: 0.8;
+}
+
+/* VESSEL: PLATO (PLATE) STYLES */
+.cup-visual-wrapper.vessel-plato {
+  width: 200px;
+  height: 200px;
+  margin-bottom: 2rem;
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.cup-visual-wrapper.vessel-plato .cup-rim {
+  display: none;
+}
+
+.cup-visual-wrapper.vessel-plato .cup-glass {
+  border-radius: 50% !important;
+  clip-path: none !important;
+  border: 4px double var(--border-glow) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(255, 255, 255, 0.05) !important;
+  background: rgba(15, 19, 26, 0.5) !important;
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  border-bottom-left-radius: 50% !important;
+  border-bottom-right-radius: 50% !important;
+}
+
+.cup-visual-wrapper.vessel-plato .cup-visual {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+}
+
+.cup-visual-wrapper.vessel-plato .cup-section {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  border-radius: 50% !important;
+  flex: none !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Concentric Plate Layers */
+.cup-visual-wrapper.vessel-plato #cup-layer-decoracion {
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 6;
+  background: radial-gradient(circle, transparent 55%, rgba(255, 71, 87, 0.7) 100%) !important;
+}
+
+.cup-visual-wrapper.vessel-plato #cup-layer-centro {
+  width: 70% !important;
+  height: 70% !important;
+  z-index: 7;
+  background: radial-gradient(circle, transparent 40%, rgba(255, 165, 0, 0.7) 100%) !important;
+  border: 2px dashed rgba(255, 255, 255, 0.25) !important;
+}
+
+.cup-visual-wrapper.vessel-plato #cup-layer-base {
+  width: 42% !important;
+  height: 42% !important;
+  z-index: 8;
+  background: radial-gradient(circle, rgba(30, 144, 255, 0.6) 0%, rgba(46, 213, 115, 0.65) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Text Position inside concentric rings */
+.cup-visual-wrapper.vessel-plato #cup-layer-decoracion .cup-section-text {
+  transform: translateY(-80px) !important;
+  font-size: 0.68rem !important;
+}
+
+.cup-visual-wrapper.vessel-plato #cup-layer-centro .cup-section-text {
+  transform: translateY(-45px) !important;
+  font-size: 0.72rem !important;
+}
+
+.cup-visual-wrapper.vessel-plato #cup-layer-base .cup-section-text {
+  transform: translateY(0) !important;
+  font-size: 0.8rem !important;
+}
+
+/* Interaction and Active States for Plate */
+.cup-visual-wrapper.vessel-plato .cup-visual.active-decoracion #cup-layer-decoracion {
+  background: radial-gradient(circle, transparent 55%, rgba(255, 71, 87, 1) 100%) !important;
+  box-shadow: 0 0 15px rgba(255, 71, 87, 0.4);
+}
+.cup-visual-wrapper.vessel-plato .cup-visual.active-decoracion #cup-layer-centro,
+.cup-visual-wrapper.vessel-plato .cup-visual.active-decoracion #cup-layer-base {
+  opacity: 0.15 !important;
+}
+
+.cup-visual-wrapper.vessel-plato .cup-visual.active-centro #cup-layer-centro {
+  background: radial-gradient(circle, transparent 40%, rgba(255, 165, 0, 1) 100%) !important;
+  box-shadow: 0 0 15px rgba(255, 165, 0, 0.4);
+}
+.cup-visual-wrapper.vessel-plato .cup-visual.active-centro #cup-layer-decoracion,
+.cup-visual-wrapper.vessel-plato .cup-visual.active-centro #cup-layer-base {
+  opacity: 0.15 !important;
+}
+
+.cup-visual-wrapper.vessel-plato .cup-visual.active-base #cup-layer-base {
+  background: radial-gradient(circle, rgba(30, 144, 255, 0.8) 0%, rgba(46, 213, 115, 0.85) 100%) !important;
+  box-shadow: 0 0 15px rgba(46, 213, 115, 0.4);
+}
+.cup-visual-wrapper.vessel-plato .cup-visual.active-base #cup-layer-decoracion,
+.cup-visual-wrapper.vessel-plato .cup-visual.active-base #cup-layer-centro {
+  opacity: 0.15 !important;
+}
+
+/* Align photo container in plate view */
+.cup-visual-wrapper.vessel-plato + .product-photo-card {
+  margin-top: 0;
+}

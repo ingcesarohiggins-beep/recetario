@@ -35,17 +35,18 @@ function setupDatabase() {
     recetasSheet.appendRow([
       "id", "name", "tagline", "category", "categoryLabel", 
       "bgColor", "themeColor", "emoji", 
-      "image_kids", "image_normal", "image_grande", "presentations"
+      "image_kids", "image_normal", "image_grande", "presentations",
+      "vessel", "utensils"
     ]);
     
     const defaultRecipes = [
-      ["original", "Cholao Original", "El clásico de clásicos con abundante Milo y fresa", "clasico", "Clásico", "linear-gradient(135deg, #ff4757 0%, #ff6b81 100%)", "#ff4757", "🍓", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)"],
-      ["mkr", "Cholao Mkr", "El toque especial de naranja, galleta Tentación y fudge de chocolate", "dulce", "Dulce / Especial", "linear-gradient(135deg, #eccc68 0%, #ff7f50 100%)", "#ff7f50", "🍪", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)"],
-      ["tropical", "Cholao Tropical", "Explosión de jarabe de mango con doble jarabe de fresa", "frutal", "Frutal", "linear-gradient(135deg, #ffa502 0%, #ff6348 100%)", "#ffa502", "🥭", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)"],
-      ["fit", "Cholao Fit", "El saludable con miel de abejas, yogurt y frutas exóticas", "fit", "Saludable / Fit", "linear-gradient(135deg, #2ed573 0%, #1e90ff 100%)", "#2ed573", "🥝", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)"],
-      ["selvatico", "Cholao Selvático", "El sabor del Amazonas con aguaymanto, sandía y miel", "frutal", "Frutal", "linear-gradient(135deg, #ffa502 0%, #2ed573 100%)", "#ffa502", "🌴", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)"],
-      ["menta-fresh", "Cholao Menta Fresh", "Súper refrescante con jarabe de menta y doble capa cítrica", "refrescante", "Refrescante", "linear-gradient(135deg, #10ac84 0%, #2ed573 100%)", "#10ac84", "🍃", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)"],
-      ["citrus", "Cholao Citrus", "El rey de los sabores cítricos con maracuyá, mandarina y kiwi", "citrico", "Cítrico", "linear-gradient(135deg, #ffa502 0%, #ff7f50 100%)", "#ff7f50", "🍊", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)"]
+      ["original", "Cholao Original", "El clásico de clásicos con abundante Milo y fresa", "clasico", "Clásico", "linear-gradient(135deg, #ff4757 0%, #ff6b81 100%)", "#ff4757", "🍓", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)", "vaso", ""],
+      ["mkr", "Cholao Mkr", "El toque especial de naranja, galleta Tentación y fudge de chocolate", "dulce", "Dulce / Especial", "linear-gradient(135deg, #eccc68 0%, #ff7f50 100%)", "#ff7f50", "🍪", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)", "vaso", ""],
+      ["tropical", "Cholao Tropical", "Explosión de jarabe de mango con doble jarabe de fresa", "frutal", "Frutal", "linear-gradient(135deg, #ffa502 0%, #ff6348 100%)", "#ffa502", "🥭", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)", "vaso", ""],
+      ["fit", "Cholao Fit", "El saludable con miel de abejas, yogurt y frutas exóticas", "fit", "Saludable / Fit", "linear-gradient(135deg, #2ed573 0%, #1e90ff 100%)", "#2ed573", "🥝", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)", "vaso", ""],
+      ["selvatico", "Cholao Selvático", "El sabor del Amazonas con aguaymanto, sandía y miel", "frutal", "Frutal", "linear-gradient(135deg, #ffa502 0%, #2ed573 100%)", "#ffa502", "🌴", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)", "vaso", ""],
+      ["menta-fresh", "Cholao Menta Fresh", "Súper refrescante con jarabe de menta y doble capa cítrica", "refrescante", "Refrescante", "linear-gradient(135deg, #10ac84 0%, #2ed573 100%)", "#10ac84", "🍃", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)", "vaso", ""],
+      ["citrus", "Cholao Citrus", "El rey de los sabores cítricos con maracuyá, mandarina y kiwi", "citrico", "Cítrico", "linear-gradient(135deg, #ffa502 0%, #ff7f50 100%)", "#ff7f50", "🍊", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)", "vaso", ""]
     ];
     
     defaultRecipes.forEach(row => recetasSheet.appendRow(row));
@@ -173,6 +174,27 @@ function setupDatabase() {
     
     defaultIngredients.forEach(row => ingredientesSheet.appendRow(row));
   }
+
+  // 3. Crear Hoja de Utensilios si no existe
+  let utensilsSheet = ss.getSheetByName("Utensilios");
+  if (!utensilsSheet) {
+    utensilsSheet = ss.insertSheet("Utensilios");
+  }
+  
+  // Rellenar Utensilios si está vacía
+  if (utensilsSheet.getLastRow() === 0) {
+    utensilsSheet.appendRow(["id", "name"]);
+    const defaultUtensils = [
+      ["u1", "Licuadora"],
+      ["u2", "Cuchara de metal"],
+      ["u3", "Cuchillo de fruta"],
+      ["u4", "Exprimidor de limón"],
+      ["u5", "Bowl para mezcla"],
+      ["u6", "Pala de hielo"],
+      ["u7", "Vaso medidor"]
+    ];
+    defaultUtensils.forEach(row => utensilsSheet.appendRow(row));
+  }
 }
 
 // Configurar cabeceras de CORS para permitir solicitudes del recetario
@@ -232,7 +254,19 @@ function doGet(e) {
         }
       });
       
-      return createJsonResponse({ status: "success", data: recipes });
+      // Parsear utensilios
+      const utensilsSheet = ss.getSheetByName("Utensilios") || ss.insertSheet("Utensilios");
+      const utensilsData = utensilsSheet.getDataRange().getValues();
+      let utensils = [];
+      if (utensilsData.length > 1) {
+        const [utHeaders, ...utRows] = utensilsData;
+        utensils = utRows.map(row => ({
+          id: row[0],
+          name: row[1]
+        }));
+      }
+      
+      return createJsonResponse({ status: "success", data: recipes, utensils: utensils });
     } catch (err) {
       return createJsonResponse({ status: "error", message: err.toString() });
     }
@@ -271,7 +305,8 @@ function doPost(e) {
       recetasSheet.appendRow([
         "id", "name", "tagline", "category", "categoryLabel", 
         "bgColor", "themeColor", "emoji", 
-        "image_kids", "image_normal", "image_grande", "presentations"
+        "image_kids", "image_normal", "image_grande", "presentations",
+        "vessel", "utensils"
       ]);
       
       recipes.forEach(r => {
@@ -279,7 +314,7 @@ function doPost(e) {
           r.id, r.name, r.tagline, r.category, r.categoryLabel,
           r.bgColor, r.themeColor, r.emoji,
           r.image_kids || "", r.image_normal || "", r.image_grande || "",
-          r.presentations || ""
+          r.presentations || "", r.vessel || "vaso", r.utensils || ""
         ]);
       });
       
@@ -310,6 +345,28 @@ function doPost(e) {
       });
       
       return createJsonResponse({ status: "success", message: "Recetas guardadas con éxito en Google Sheets" });
+    } catch (err) {
+      return createJsonResponse({ status: "error", message: err.toString() });
+    }
+  }
+
+  // Guardar utensilios
+  if (action === "saveUtensils") {
+    try {
+      const utensils = postData.utensils;
+      if (!utensils || !Array.isArray(utensils)) {
+        return createJsonResponse({ status: "error", message: "Formato de utensilios incorrecto" });
+      }
+      
+      const utensilsSheet = ss.getSheetByName("Utensilios") || ss.insertSheet("Utensilios");
+      utensilsSheet.clear();
+      utensilsSheet.appendRow(["id", "name"]);
+      
+      utensils.forEach(u => {
+        utensilsSheet.appendRow([u.id, u.name]);
+      });
+      
+      return createJsonResponse({ status: "success", message: "Utensilios guardados con éxito en Google Sheets" });
     } catch (err) {
       return createJsonResponse({ status: "error", message: err.toString() });
     }
@@ -367,7 +424,7 @@ function doPost(e) {
         if (size === "normal") colIdx = 10; // 'image_normal' (J)
         if (size === "grande") colIdx = 11; // 'image_grande' (K)
         
-        recetasSheet.getCell(rowIdx, colIdx).setValue(downloadUrl);
+        recetasSheet.getRange(rowIdx, colIdx).setValue(downloadUrl);
         return createJsonResponse({ status: "success", url: downloadUrl, message: "Imagen subida e integrada exitosamente" });
       } else {
         // Receta nueva no guardada en Sheets aún. Retornamos la URL exitosa para guardarse en la acción saveAllRecipes posterior.

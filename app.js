@@ -257,6 +257,20 @@ let editingRecipe = null;
 let activeEditorLayer = "base";
 let presentationsManuallyEdited = false;
 
+// Utensils State
+let UTENSILS = [
+  { id: "u1", name: "Licuadora" },
+  { id: "u2", name: "Cuchara de metal" },
+  { id: "u3", name: "Cuchillo de fruta" },
+  { id: "u4", name: "Exprimidor de limón" },
+  { id: "u5", name: "Bowl para mezcla" },
+  { id: "u6", name: "Pala de hielo" },
+  { id: "u7", name: "Vaso medidor" }
+];
+let manageUtensilsBtnEl, utensilsModalEl, closeUtensilsBtnEl, closeUtensilsFooterBtnEl;
+let addUtensilFormEl, newUtensilNameInputEl, utensilsListItemsEl;
+let editorUtensilsChecklistEl, recipeUtensilsContainerEl, recipeUtensilsListEl;
+
 // DOM Elements
 let recipeListEl, searchInputEl, filterTabsEl, recipeTitleEl, recipeTaglineEl;
 let categoryBadgeEl, printBtnEl, printAllBtnEl, kitchenModeToggleEl, recetarioContainerEl, printAreaEl;
@@ -316,6 +330,18 @@ function bindDOMElements() {
   categoriesListEl = document.getElementById("categories-list");
   editorIngredientsListEl = document.getElementById("editor-ingredients-list");
   addIngredientRowBtnEl = document.getElementById("add-ingredient-row-btn");
+
+  // Utensils Elements
+  manageUtensilsBtnEl = document.getElementById("manage-utensils-btn");
+  utensilsModalEl = document.getElementById("utensils-modal");
+  closeUtensilsBtnEl = document.getElementById("close-utensils-btn");
+  closeUtensilsFooterBtnEl = document.getElementById("close-utensils-footer-btn");
+  addUtensilFormEl = document.getElementById("add-utensil-form");
+  newUtensilNameInputEl = document.getElementById("new-utensil-name");
+  utensilsListItemsEl = document.getElementById("utensils-list-items");
+  editorUtensilsChecklistEl = document.getElementById("editor-utensils-checklist");
+  recipeUtensilsContainerEl = document.getElementById("recipe-utensils-container");
+  recipeUtensilsListEl = document.getElementById("recipe-utensils-list");
 }
 
 // Update connection pill visual state (no-op since database settings are now internal)
@@ -325,6 +351,12 @@ function updateConnectionStatus(state, text) {
 
 // Load recipes: from Sheets API, or fallback to localStorage, or fallback to DEFAULT_RECIPES
 async function loadRecipeData() {
+  // Load local backup of utensils first if available
+  const localUtensils = localStorage.getItem("el_cholao_recetario_utensils");
+  if (localUtensils) {
+    try { UTENSILS = JSON.parse(localUtensils); } catch (e) {}
+  }
+
   if (!apiWebUrl) {
     // Attempt to load from localStorage first
     const localData = localStorage.getItem("el_cholao_recetario_recipes");
@@ -355,9 +387,14 @@ async function loadRecipeData() {
     
     const result = await response.json();
     if (result.status === "success" && result.data && result.data.length > 0) {
-      // Validate structure has 3 sizes
       RECIPES = result.data;
       localStorage.setItem("el_cholao_recetario_recipes", JSON.stringify(RECIPES));
+      
+      if (result.utensils && result.utensils.length > 0) {
+        UTENSILS = result.utensils;
+        localStorage.setItem("el_cholao_recetario_utensils", JSON.stringify(UTENSILS));
+      }
+      
       updateConnectionStatus("connected", "Sheets Sincronizado");
     } else {
       throw new Error(result.message || "Estructura de datos inválida");
@@ -378,6 +415,12 @@ async function loadRecipeData() {
   RECIPES.forEach(r => {
     if (!r.presentations) {
       r.presentations = getPresentationsByCategory(r.category || "");
+    }
+    if (!r.vessel) {
+      r.vessel = "vaso";
+    }
+    if (!r.utensils) {
+      r.utensils = "";
     }
   });
 
@@ -565,6 +608,34 @@ function setupEventListeners() {
     renderEditorIngredients();
     renderPhotoUploadPreviews();
   });
+
+  // Utensils modal trigger
+  manageUtensilsBtnEl.addEventListener("click", () => {
+    openUtensilsManager();
+  });
+
+  closeUtensilsBtnEl.addEventListener("click", closeUtensilsManager);
+  closeUtensilsFooterBtnEl.addEventListener("click", closeUtensilsManager);
+
+  // Add new utensil
+  addUtensilFormEl.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = newUtensilNameInputEl.value.trim();
+    if (!name) return;
+
+    const newUtensil = {
+      id: "u-" + Date.now(),
+      name: name
+    };
+    UTENSILS.push(newUtensil);
+    newUtensilNameInputEl.value = "";
+
+    renderUtensilsManagerList();
+    renderEditorUtensilsChecklist();
+
+    // Save to Google Sheets / local backup
+    await saveUtensilsData();
+  });
 }
 
 // Render the sidebar list of recipes
@@ -618,6 +689,23 @@ function selectRecipe(id) {
   recipeTaglineEl.innerText = recipe.tagline;
   categoryBadgeEl.innerText = recipe.categoryLabel;
   categoryBadgeEl.className = `badge badge-${recipe.category}`;
+
+  // Apply vessel class to virtual glass/plate container
+  const wrapper = document.querySelector(".cup-visual-wrapper");
+  if (wrapper) {
+    wrapper.className = `cup-visual-wrapper vessel-${recipe.vessel || "vaso"}`;
+  }
+
+  // Update dynamic help text
+  const helpTextEl = document.querySelector(".visual-column-help");
+  if (helpTextEl) {
+    helpTextEl.innerText = recipe.vessel === "plato" 
+      ? "Toca una capa del plato para ver solo sus ingredientes" 
+      : "Toca una capa del vaso para ver solo sus ingredientes";
+  }
+
+  // Render required utensils
+  renderRecipeUtensilsDisplay(recipe);
 
   // Reset cup filter
   setLayerFilter("all");
@@ -833,6 +921,9 @@ function openRecipeEditor() {
   editEmojiEl.value = editingRecipe.emoji;
   editCategoryEl.value = editingRecipe.category;
   
+  // Set vessel dropdown value
+  document.getElementById("edit-vessel").value = editingRecipe.vessel || "vaso";
+  
   // Set presentations input value
   if (!editingRecipe.presentations) {
     editingRecipe.presentations = getPresentationsByCategory(editingRecipe.category);
@@ -853,9 +944,10 @@ function openRecipeEditor() {
   document.querySelector(".photo-upload-section").style.display = "block";
   deleteRecipeBtnEl.style.display = "inline-flex";
 
-  // Render previews & ingredients
+  // Render previews, ingredients & utensils checklist
   renderPhotoUploadPreviews();
   renderEditorIngredients();
+  renderEditorUtensilsChecklist();
 
   recipeEditorModalEl.classList.add("open");
 }
@@ -1235,6 +1327,8 @@ function createNewBlankRecipe() {
     image_normal: "",
     image_grande: "",
     presentations: "Kids (10 oz), Normal (12 oz), Grande (16 oz)",
+    vessel: "vaso",
+    utensils: "",
     layers: {
       base: [],
       centro: [],
@@ -1247,6 +1341,7 @@ function createNewBlankRecipe() {
   editTaglineEl.value = "";
   editEmojiEl.value = "🍧";
   editCategoryEl.value = "";
+  document.getElementById("edit-vessel").value = "vaso";
   document.getElementById("edit-presentations").value = editingRecipe.presentations;
   presentationsManuallyEdited = false;
 
@@ -1263,6 +1358,7 @@ function createNewBlankRecipe() {
 
   renderPhotoUploadPreviews();
   renderEditorIngredients();
+  renderEditorUtensilsChecklist();
 
   recipeEditorModalEl.classList.add("open");
 }
@@ -1276,11 +1372,18 @@ async function saveEditedRecipe() {
   const newEmoji = editEmojiEl.value.trim();
   const newCategory = editCategoryEl.value.trim();
   const newPresentations = document.getElementById("edit-presentations").value.trim();
+  const newVessel = document.getElementById("edit-vessel").value;
 
   if (!newName || !newCategory || !newPresentations) {
     alert("El Nombre, la Categoría y las Presentaciones son requeridos.");
     return;
   }
+
+  // Gather selected utensils
+  const selectedUtensils = [];
+  document.querySelectorAll("#editor-utensils-checklist input[type='checkbox']:checked").forEach(cb => {
+    selectedUtensils.push(cb.value);
+  });
 
   // Update recipe attributes
   editingRecipe.name = newName;
@@ -1288,6 +1391,8 @@ async function saveEditedRecipe() {
   editingRecipe.emoji = newEmoji || "🍧";
   editingRecipe.category = newCategory;
   editingRecipe.presentations = newPresentations;
+  editingRecipe.vessel = newVessel;
+  editingRecipe.utensils = selectedUtensils.join(",");
   
   // Capitalize category name for label
   editingRecipe.categoryLabel = newCategory.charAt(0).toUpperCase() + newCategory.slice(1);
@@ -1591,6 +1696,127 @@ function preparePrintAll() {
   });
 
   printAreaEl.innerHTML = html;
+}
+
+// ==========================================
+// UTENSILS MANAGEMENT SYSTEM
+// ==========================================
+
+function openUtensilsManager() {
+  utensilsModalEl.classList.add("open");
+  renderUtensilsManagerList();
+}
+
+function closeUtensilsManager() {
+  utensilsModalEl.classList.remove("open");
+}
+
+function renderUtensilsManagerList() {
+  utensilsListItemsEl.innerHTML = "";
+  if (UTENSILS.length === 0) {
+    utensilsListItemsEl.innerHTML = `<li style="padding:1rem; text-align:center; color:var(--text-muted);">No hay utensilios registrados.</li>`;
+    return;
+  }
+  
+  UTENSILS.forEach(u => {
+    const li = document.createElement("li");
+    li.className = "utensil-item-row";
+    li.innerHTML = `
+      <span>${u.name}</span>
+      <button type="button" class="utensil-delete-btn" onclick="deleteUtensil('${u.id}')">🗑️</button>
+    `;
+    utensilsListItemsEl.appendChild(li);
+  });
+}
+
+window.deleteUtensil = async function(id) {
+  const confirmDel = confirm("¿Estás seguro de que deseas eliminar este utensilio?");
+  if (!confirmDel) return;
+
+  const idx = UTENSILS.findIndex(u => u.id === id);
+  if (idx !== -1) {
+    UTENSILS.splice(idx, 1);
+    renderUtensilsManagerList();
+    renderEditorUtensilsChecklist();
+    await saveUtensilsData();
+  }
+};
+
+async function saveUtensilsData() {
+  localStorage.setItem("el_cholao_recetario_utensils", JSON.stringify(UTENSILS));
+  
+  if (!apiWebUrl) return;
+
+  try {
+    const response = await fetch(apiWebUrl, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "saveUtensils",
+        utensils: UTENSILS
+      })
+    });
+    // CORS bypass fetch verification in background
+    setTimeout(loadRecipeData, 1500);
+  } catch (err) {
+    console.error("Failed saving utensils to Google Sheets:", err);
+  }
+}
+
+function renderEditorUtensilsChecklist() {
+  editorUtensilsChecklistEl.innerHTML = "";
+  if (UTENSILS.length === 0) {
+    editorUtensilsChecklistEl.innerHTML = `<div style="grid-column: 1/-1; padding: 0.5rem; text-align:center; color:var(--text-muted); font-size:0.75rem;">No hay utensilios. Agrégalos usando el botón de Utensilios de arriba.</div>`;
+    return;
+  }
+
+  const recipeUtensils = editingRecipe && editingRecipe.utensils 
+    ? editingRecipe.utensils.split(",").map(u => u.trim()) 
+    : [];
+
+  UTENSILS.forEach(u => {
+    const isChecked = recipeUtensils.includes(u.id) ? "checked" : "";
+    const label = document.createElement("label");
+    label.className = "utensil-check-item";
+    label.innerHTML = `
+      <input type="checkbox" value="${u.id}" ${isChecked}>
+      <span>${u.name}</span>
+    `;
+    editorUtensilsChecklistEl.appendChild(label);
+  });
+}
+
+function renderRecipeUtensilsDisplay(recipe) {
+  recipeUtensilsListEl.innerHTML = "";
+  if (!recipe.utensils) {
+    recipeUtensilsContainerEl.style.display = "none";
+    return;
+  }
+
+  const recipeUtensilIds = recipe.utensils.split(",").map(id => id.trim()).filter(id => id !== "");
+  if (recipeUtensilIds.length === 0) {
+    recipeUtensilsContainerEl.style.display = "none";
+    return;
+  }
+
+  let count = 0;
+  recipeUtensilIds.forEach(id => {
+    const utensil = UTENSILS.find(u => u.id === id);
+    if (utensil) {
+      count++;
+      const badge = document.createElement("span");
+      badge.className = "utensil-badge";
+      badge.innerHTML = `🛠️ ${utensil.name}`;
+      recipeUtensilsListEl.appendChild(badge);
+    }
+  });
+
+  if (count > 0) {
+    recipeUtensilsContainerEl.style.display = "block";
+  } else {
+    recipeUtensilsContainerEl.style.display = "none";
+  }
 }
 
 // Start the app when content loads

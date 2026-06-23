@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recetario de Cholaos - El Cholao Oficial</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="brand">
+      <img src="logo.png" alt="El Cholao Logo" class="brand-logo-img">
+      <h1>EL CHOLAO - RECETARIO</h1>
+    </div>
+    
+    <!-- Status indicator for Google Sheets connection -->
+    <div class="connection-status-pill" id="connection-status-pill">
+      <span class="status-dot"></span>
+      <span class="status-text">Cargando base de datos...</span>
+    </div>
+
+    <div class="header-actions">
+      <!-- Connection Settings Toggle -->
+      <button class="btn btn-secondary" id="settings-toggle-btn">
+        <span>⚙️</span> Base de Datos
+      </button>
+
+      <!-- Toggle Kitchen Mode / Modo Cocina -->
+      <button class="btn btn-toggle" id="kitchen-mode-toggle">
+        <span class="toggle-icon">🍳</span>
+        <span class="toggle-text">Modo Cocina</span>
+      </button>
+
+      <!-- Edit Recipe Button (Admin) -->
+      <button class="btn btn-primary" id="edit-recipe-btn">
+        <span>✏️</span> Editar Receta
+      </button>
+      
+      <!-- Print Current Recipe -->
+      <button class="btn" id="print-btn">
+        <span>🖨️</span> Imprimir Receta
+      </button>
+
+      <!-- Print Entire Book -->
+      <button class="btn" id="print-all-btn">
+        <span>📚</span> Imprimir Todo
+      </button>
+    </div>
+  </header>
+
+  <!-- Database Connection Settings Drawer -->
+  <div class="settings-drawer" id="settings-drawer">
+    <div class="drawer-header">
+      <h3>Configuración de Base de Datos</h3>
+      <button class="close-btn" id="close-settings-btn">&times;</button>
+    </div>
+    <div class="drawer-content">
+      <p class="settings-help">Conecta el recetario con tu Google Sheets para almacenar y sincronizar recetas en la nube de forma gratuita.</p>
+      
+      <div class="form-group">
+        <label for="api-url-input">Google Apps Script Web App URL:</label>
+        <input type="text" id="api-url-input" class="form-control" placeholder="https://script.google.com/macros/s/.../exec">
+      </div>
+      
+      <button class="btn btn-primary w-100" id="save-api-url-btn">Guardar y Conectar</button>
+      
+      <div class="sync-actions-box" id="sync-actions-box" style="display:none;">
+        <hr class="settings-divider">
+        <h4>Acciones de Sincronización</h4>
+        <p class="settings-help">Si tu hoja de Google Sheets está vacía, inicialízala con las 7 recetas de fábrica de Cholaos.</p>
+        <button class="btn btn-secondary w-100" id="initialize-db-btn">Inicializar Datos por Defecto</button>
+        <button class="btn btn-secondary w-100" id="force-fetch-btn" style="margin-top: 0.5rem;">Descargar Recetas de Sheets</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Recetario Container -->
+  <main class="main-content" id="recetario-container">
+    
+    <!-- Sidebar: Recipe List -->
+    <aside class="sidebar">
+      <div class="search-box">
+        <div class="search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" class="search-input" placeholder="Buscar cholao...">
+        </div>
+      </div>
+      
+      <!-- Category Filters -->
+      <div class="filter-tabs" id="filter-tabs">
+        <div class="filter-tab active" data-category="all">Todos</div>
+        <div class="filter-tab" data-category="clasico">Clásicos</div>
+        <div class="filter-tab" data-category="frutal">Frutales</div>
+        <div class="filter-tab" data-category="citrico">Cítricos</div>
+        <div class="filter-tab" data-category="refrescante">Refrescantes</div>
+        <div class="filter-tab" data-category="dulce">Dulces</div>
+        <div class="filter-tab" data-category="fit">Saludables</div>
+      </div>
+      
+      <div class="recipe-list" id="recipe-list">
+        <!-- Rendered dynamically from JS -->
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <section class="recipe-view">
+      
+      <!-- Column 1: Interactive Cup Simulator & Product Image -->
+      <div class="visual-column">
+        <!-- Size Selector Control -->
+        <div class="size-selector-container">
+          <span class="size-label">Tamaño de Vaso:</span>
+          <div class="size-tabs" id="size-tabs">
+            <button class="size-tab" data-size="kids">Kids (10 oz)</button>
+            <button class="size-tab active" data-size="normal">Normal (12 oz)</button>
+            <button class="size-tab" data-size="grande">Grande (16 oz)</button>
+          </div>
+        </div>
+
+        <div class="interactive-visuals-row">
+          <!-- The Cup Visualization -->
+          <div class="cup-visual-container">
+            <div class="visual-column-help">
+              Toca una capa del vaso para ver solo sus ingredientes
+            </div>
+            <div class="cup-visual-wrapper">
+              <div class="cup-rim"></div>
+              <div class="cup-glass" id="cup-glass-shape">
+                <div class="cup-visual" id="cup-visual">
+                  <!-- Decoracion Layer -->
+                  <div class="cup-section" id="cup-layer-decoracion" data-layer="decoracion">
+                    <span class="cup-section-text">Decoración</span>
+                  </div>
+                  <!-- Centro Layer -->
+                  <div class="cup-section" id="cup-layer-centro" data-layer="centro">
+                    <span class="cup-section-text">Centro</span>
+                  </div>
+                  <!-- Base Layer -->
+                  <div class="cup-section" id="cup-layer-base" data-layer="base">
+                    <span class="cup-section-text">Base</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Reset & Filtering Pills -->
+            <div class="layer-pills">
+              <button class="layer-pill active" data-layer="all" onclick="setLayerFilter('all')">Todo</button>
+              <button class="layer-pill" data-layer="base" onclick="setLayerFilter('base')">Base</button>
+              <button class="layer-pill" data-layer="centro" onclick="setLayerFilter('centro')">Centro</button>
+              <button class="layer-pill" data-layer="decoracion" onclick="setLayerFilter('decoracion')">Decoración</button>
+            </div>
+          </div>
+
+          <!-- Product Photo Display Card -->
+          <div class="product-photo-card" id="product-photo-card">
+            <div class="photo-card-header">
+              <h4>FOTO DEL PRODUCTO</h4>
+              <span class="photo-size-badge" id="photo-size-badge">12 oz</span>
+            </div>
+            <div class="photo-container" id="photo-container">
+              <!-- Rendered from JS: image or upload prompt -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 2: Recipe Ingredients & Directions -->
+      <div class="recipe-details-column">
+        <div class="recipe-hero">
+          <span class="badge" id="category-badge">Clásico</span>
+          <h2 id="recipe-title">Cholao Original</h2>
+          <p id="recipe-tagline">El clásico de clásicos con abundante Milo y fresa.</p>
+        </div>
+
+        <div class="recipe-content-wrapper" id="ingredients-container">
+          <!-- Rendered dynamically from JS -->
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Recipe Editor Modal (Admin Panel) -->
+  <div class="modal" id="recipe-editor-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Editar Receta: <span id="editor-recipe-name">Cholao</span></h3>
+        <button class="close-btn" id="close-editor-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="recipe-editor-form">
+          <!-- Tagline & Emoji -->
+          <div class="form-row">
+            <div class="form-group flex-2">
+              <label for="edit-tagline">Eslogan / Subtítulo:</label>
+              <input type="text" id="edit-tagline" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="edit-emoji">Emoji:</label>
+              <input type="text" id="edit-emoji" class="form-control text-center" style="font-size: 1.25rem;" maxlength="2" required>
+            </div>
+            <div class="form-group">
+              <label for="edit-category">Categoría:</label>
+              <select id="edit-category" class="form-control">
+                <option value="clasico">Clásico</option>
+                <option value="frutal">Frutal</option>
+                <option value="citrico">Cítrico</option>
+                <option value="refrescante">Refrescante</option>
+                <option value="dulce">Dulce</option>
+                <option value="fit">Saludable/Fit</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Product Photos Uploads -->
+          <div class="photo-upload-section">
+            <h4>Fotos del Producto (Cargar a Google Drive)</h4>
+            <div class="photo-upload-grid">
+              <!-- Upload Kids -->
+              <div class="photo-upload-card" data-size="kids">
+                <div class="upload-title">Kids (10 oz)</div>
+                <div class="upload-preview" id="preview-upload-kids">Sin imagen</div>
+                <label class="btn-file-upload">
+                  Subir Foto
+                  <input type="file" id="upload-file-kids" accept="image/*" onchange="handleImageFileSelect(event, 'kids')">
+                </label>
+                <div class="upload-progress-bar"><div class="progress-fill" id="progress-kids"></div></div>
+              </div>
+              
+              <!-- Upload Normal -->
+              <div class="photo-upload-card" data-size="normal">
+                <div class="upload-title">Normal (12 oz)</div>
+                <div class="upload-preview" id="preview-upload-normal">Sin imagen</div>
+                <label class="btn-file-upload">
+                  Subir Foto
+                  <input type="file" id="upload-file-normal" accept="image/*" onchange="handleImageFileSelect(event, 'normal')">
+                </label>
+                <div class="upload-progress-bar"><div class="progress-fill" id="progress-normal"></div></div>
+              </div>
+
+              <!-- Upload Grande -->
+              <div class="photo-upload-card" data-size="grande">
+                <div class="upload-title">Grande (16 oz)</div>
+                <div class="upload-preview" id="preview-upload-grande">Sin imagen</div>
+                <label class="btn-file-upload">
+                  Subir Foto
+                  <input type="file" id="upload-file-grande" accept="image/*" onchange="handleImageFileSelect(event, 'grande')">
+                </label>
+                <div class="upload-progress-bar"><div class="progress-fill" id="progress-grande"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ingredients List Section -->
+          <div class="ingredients-editor-section">
+            <div class="ingredients-editor-header">
+              <h4>Ingredientes por Capa</h4>
+              <div class="layer-selector-tabs">
+                <button type="button" class="layer-editor-tab active" data-layer="base">Base</button>
+                <button type="button" class="layer-editor-tab" data-layer="centro">Centro</button>
+                <button type="button" class="layer-editor-tab" data-layer="decoracion">Decoración</button>
+              </div>
+            </div>
+            
+            <div class="ingredients-editor-list" id="editor-ingredients-list">
+              <!-- Populated dynamically with JS -->
+            </div>
+            
+            <button type="button" class="btn btn-secondary w-100" id="add-ingredient-row-btn" style="margin-top: 1rem;">
+              <span>➕</span> Agregar Ingrediente
+            </button>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancel-edit-btn">Cancelar</button>
+        <button class="btn btn-primary" id="save-recipe-btn">Guardar Receta</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Print Rendering Area (Invisible on screen, visible during printing) -->
+  <div id="print-area">
+    <!-- Formatted document generated in JS prior to printing -->
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

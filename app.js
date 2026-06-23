@@ -255,6 +255,7 @@ const apiWebUrl = "https://script.google.com/macros/s/AKfycbzWrnuxbGQ6wGExYGKlTg
 // Editor Form State
 let editingRecipe = null;
 let activeEditorLayer = "base";
+let presentationsManuallyEdited = false;
 
 // DOM Elements
 let recipeListEl, searchInputEl, filterTabsEl, recipeTitleEl, recipeTaglineEl;
@@ -524,7 +525,7 @@ function setupEventListeners() {
     });
   });
 
-  // Add row in editor
+// Add row in editor
   addIngredientRowBtnEl.addEventListener("click", () => {
     if (!editingRecipe) return;
     saveEditorIngredientsState();
@@ -534,6 +535,35 @@ function setupEventListeners() {
       instruction: ""
     });
     renderEditorIngredients();
+  });
+
+  // Auto-fill presentations when category changes, unless manually edited
+  editCategoryEl.addEventListener("input", () => {
+    if (!editingRecipe) return;
+    if (!presentationsManuallyEdited) {
+      const defaultPresentations = getPresentationsByCategory(editCategoryEl.value);
+      const editPresentationsEl = document.getElementById("edit-presentations");
+      if (editPresentationsEl.value !== defaultPresentations) {
+        editPresentationsEl.value = defaultPresentations;
+        editingRecipe.presentations = defaultPresentations;
+        
+        saveEditorIngredientsState();
+        renderEditorIngredients();
+        renderPhotoUploadPreviews();
+      }
+    }
+  });
+
+  // Listen to presentations input to update the editor fields and previews in real time
+  const editPresentationsEl = document.getElementById("edit-presentations");
+  editPresentationsEl.addEventListener("input", () => {
+    if (!editingRecipe) return;
+    presentationsManuallyEdited = true;
+    editingRecipe.presentations = editPresentationsEl.value;
+    
+    saveEditorIngredientsState();
+    renderEditorIngredients();
+    renderPhotoUploadPreviews();
   });
 }
 
@@ -605,7 +635,7 @@ function renderSizeTabs() {
   const recipe = RECIPES.find(r => r.id === activeRecipeId);
   if (!recipe) return;
 
-  const sizes = recipe.presentations ? recipe.presentations.split(",").map(s => s.trim()) : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
+  const sizes = recipe.presentations ? recipe.presentations.split(",").map(s => s.trim()).filter(s => s !== "") : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
   
   sizeTabsEl.innerHTML = "";
   
@@ -747,7 +777,7 @@ function renderProductPhoto() {
   const recipe = RECIPES.find(r => r.id === activeRecipeId);
   if (!recipe) return;
 
-  const sizes = recipe.presentations ? recipe.presentations.split(",").map(s => s.trim()) : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
+  const sizes = recipe.presentations ? recipe.presentations.split(",").map(s => s.trim()).filter(s => s !== "") : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
   const sizeKeys = ["kids", "normal", "grande"];
   const activeIdx = sizeKeys.indexOf(activeSize);
   const sizeLabel = activeIdx !== -1 && activeIdx < sizes.length ? sizes[activeIdx] : "Standard";
@@ -808,6 +838,7 @@ function openRecipeEditor() {
     editingRecipe.presentations = getPresentationsByCategory(editingRecipe.category);
   }
   document.getElementById("edit-presentations").value = editingRecipe.presentations;
+  presentationsManuallyEdited = (editingRecipe.presentations !== getPresentationsByCategory(editingRecipe.category));
   
   // Set default active editor layer tab
   activeEditorLayer = "base";
@@ -885,7 +916,7 @@ function renderCategoryTabs() {
 function renderPhotoUploadPreviews() {
   if (!editingRecipe) return;
 
-  const sizes = editingRecipe.presentations ? editingRecipe.presentations.split(",").map(s => s.trim()) : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
+  const sizes = editingRecipe.presentations ? editingRecipe.presentations.split(",").map(s => s.trim()).filter(s => s !== "") : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
   const sizeKeys = ["kids", "normal", "grande"];
 
   sizeKeys.forEach((key, idx) => {
@@ -1060,7 +1091,7 @@ function renderEditorIngredients() {
     return;
   }
 
-  const sizes = editingRecipe.presentations ? editingRecipe.presentations.split(",").map(s => s.trim()) : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
+  const sizes = editingRecipe.presentations ? editingRecipe.presentations.split(",").map(s => s.trim()).filter(s => s !== "") : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
   const sizeKeys = ["kids", "normal", "grande"];
 
   ingredients.forEach((ing, index) => {
@@ -1217,6 +1248,7 @@ function createNewBlankRecipe() {
   editEmojiEl.value = "🍧";
   editCategoryEl.value = "";
   document.getElementById("edit-presentations").value = editingRecipe.presentations;
+  presentationsManuallyEdited = false;
 
   activeEditorLayer = "base";
   document.querySelectorAll(".layer-editor-tab").forEach(tab => {
@@ -1375,7 +1407,7 @@ function preparePrintSingle(recipeId) {
   const recipe = RECIPES.find(r => r.id === recipeId);
   if (!recipe) return;
 
-  const sizes = recipe.presentations ? recipe.presentations.split(",").map(s => s.trim()) : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
+  const sizes = recipe.presentations ? recipe.presentations.split(",").map(s => s.trim()).filter(s => s !== "") : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
   const sizeKeys = ["kids", "normal", "grande"];
 
   const renderPrintRows = (layerKey) => {
@@ -1474,7 +1506,7 @@ function preparePrintAll() {
   const sizeKeys = ["kids", "normal", "grande"];
 
   RECIPES.forEach((recipe, idx) => {
-    const sizes = recipe.presentations ? recipe.presentations.split(",").map(s => s.trim()) : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
+    const sizes = recipe.presentations ? recipe.presentations.split(",").map(s => s.trim()).filter(s => s !== "") : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
 
     const renderPrintRows = (layerKey) => {
       const items = recipe.layers[layerKey] || [];

@@ -1752,16 +1752,12 @@ body {
 }
 
 .cup-visual-wrapper.vessel-plato #cup-layer-centro {
-  width: 70% !important;
-  height: 70% !important;
-  z-index: 7;
-  background: radial-gradient(circle, transparent 40%, rgba(255, 165, 0, 0.7) 100%) !important;
-  border: 2px dashed rgba(255, 255, 255, 0.25) !important;
+  display: none !important;
 }
 
 .cup-visual-wrapper.vessel-plato #cup-layer-base {
-  width: 42% !important;
-  height: 42% !important;
+  width: 55% !important;
+  height: 55% !important;
   z-index: 8;
   background: radial-gradient(circle, rgba(30, 144, 255, 0.6) 0%, rgba(46, 213, 115, 0.65) 100%) !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
@@ -1771,11 +1767,6 @@ body {
 .cup-visual-wrapper.vessel-plato #cup-layer-decoracion .cup-section-text {
   transform: translateY(-80px) !important;
   font-size: 0.68rem !important;
-}
-
-.cup-visual-wrapper.vessel-plato #cup-layer-centro .cup-section-text {
-  transform: translateY(-45px) !important;
-  font-size: 0.72rem !important;
 }
 
 .cup-visual-wrapper.vessel-plato #cup-layer-base .cup-section-text {
@@ -1788,17 +1779,7 @@ body {
   background: radial-gradient(circle, transparent 55%, rgba(255, 71, 87, 1) 100%) !important;
   box-shadow: 0 0 15px rgba(255, 71, 87, 0.4);
 }
-.cup-visual-wrapper.vessel-plato .cup-visual.active-decoracion #cup-layer-centro,
 .cup-visual-wrapper.vessel-plato .cup-visual.active-decoracion #cup-layer-base {
-  opacity: 0.15 !important;
-}
-
-.cup-visual-wrapper.vessel-plato .cup-visual.active-centro #cup-layer-centro {
-  background: radial-gradient(circle, transparent 40%, rgba(255, 165, 0, 1) 100%) !important;
-  box-shadow: 0 0 15px rgba(255, 165, 0, 0.4);
-}
-.cup-visual-wrapper.vessel-plato .cup-visual.active-centro #cup-layer-decoracion,
-.cup-visual-wrapper.vessel-plato .cup-visual.active-centro #cup-layer-base {
   opacity: 0.15 !important;
 }
 
@@ -1806,8 +1787,7 @@ body {
   background: radial-gradient(circle, rgba(30, 144, 255, 0.8) 0%, rgba(46, 213, 115, 0.85) 100%) !important;
   box-shadow: 0 0 15px rgba(46, 213, 115, 0.4);
 }
-.cup-visual-wrapper.vessel-plato .cup-visual.active-base #cup-layer-decoracion,
-.cup-visual-wrapper.vessel-plato .cup-visual.active-base #cup-layer-centro {
+.cup-visual-wrapper.vessel-plato .cup-visual.active-base #cup-layer-decoracion {
   opacity: 0.15 !important;
 }
 

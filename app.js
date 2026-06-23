@@ -263,7 +263,7 @@ let cupLayerDecoracion, cupLayerCentro, cupLayerBase, cupVisualEl, ingredientsCo
 let sizeTabsEl, photoContainerEl, photoSizeBadgeEl;
 
 // Editor Elements
-let editRecipeBtnEl, recipeEditorModalEl, closeEditorBtnEl, cancelEditBtnEl, saveRecipeBtnEl;
+let editRecipeBtnEl, recipeEditorModalEl, closeEditorBtnEl, cancelEditBtnEl, saveRecipeBtnEl, deleteRecipeBtnEl;
 let editorRecipeNameEl, editNameEl, editTaglineEl, editEmojiEl, editCategoryEl, editorIngredientsListEl, addIngredientRowBtnEl;
 let newRecipeBtnEl, categoriesListEl;
 
@@ -306,6 +306,7 @@ function bindDOMElements() {
   closeEditorBtnEl = document.getElementById("close-editor-btn");
   cancelEditBtnEl = document.getElementById("cancel-edit-btn");
   saveRecipeBtnEl = document.getElementById("save-recipe-btn");
+  deleteRecipeBtnEl = document.getElementById("delete-recipe-btn");
   editorRecipeNameEl = document.getElementById("editor-recipe-name");
   editNameEl = document.getElementById("edit-name");
   editTaglineEl = document.getElementById("edit-tagline");
@@ -508,6 +509,9 @@ function setupEventListeners() {
   
   // Save edited recipe
   saveRecipeBtnEl.addEventListener("click", saveEditedRecipe);
+
+  // Delete recipe
+  deleteRecipeBtnEl.addEventListener("click", deleteActiveRecipe);
 
   // Editor layers tabs
   document.querySelectorAll(".layer-editor-tab").forEach(tab => {
@@ -813,6 +817,10 @@ function openRecipeEditor() {
 
   // Populate categories datalist
   updateCategoriesDatalist();
+
+  // Show photo upload section and delete button for existing products
+  document.querySelector(".photo-upload-section").style.display = "block";
+  deleteRecipeBtnEl.style.display = "inline-flex";
 
   // Render previews & ingredients
   renderPhotoUploadPreviews();
@@ -1216,6 +1224,11 @@ function createNewBlankRecipe() {
   });
 
   updateCategoriesDatalist();
+
+  // Hide photo upload section and delete button for new products
+  document.querySelector(".photo-upload-section").style.display = "none";
+  deleteRecipeBtnEl.style.display = "none";
+
   renderPhotoUploadPreviews();
   renderEditorIngredients();
 
@@ -1286,6 +1299,69 @@ async function saveEditedRecipe() {
     renderCategoryTabs();
     renderSidebar();
     selectRecipe(activeRecipeId);
+  }
+}
+
+// Delete product from local state and Google Sheets with triple validation
+async function deleteActiveRecipe() {
+  if (!editingRecipe) return;
+
+  const recipeName = editingRecipe.name;
+  
+  // Validation 1: Standard alert confirm
+  const confirm1 = confirm(`¿Estás seguro de que deseas eliminar permanentemente el producto "${recipeName}"?`);
+  if (!confirm1) return;
+
+  // Validation 2: WARNING alert confirm
+  const confirm2 = confirm(`¡CUIDADO! Esta acción borrará el producto de Google Sheets de forma permanente, incluyendo todos sus ingredientes y porciones definidos. ¿Realmente quieres continuar?`);
+  if (!confirm2) return;
+
+  // Validation 3: Text input check
+  const promptVal = prompt(`Para completar la eliminación definitiva de "${recipeName}", escribe "ELIMINAR" en letras mayúsculas a continuación:`);
+  if (promptVal !== "ELIMINAR") {
+    alert("Confirmación incorrecta. El producto no ha sido eliminado.");
+    return;
+  }
+
+  // Remove recipe from local state array
+  const idx = RECIPES.findIndex(r => r.id === editingRecipe.id);
+  if (idx !== -1) {
+    RECIPES.splice(idx, 1);
+  }
+
+  deleteRecipeBtnEl.innerText = "Eliminando...";
+  deleteRecipeBtnEl.disabled = true;
+
+  // Save the updated recipes array to Google Sheets (overwriting the sheet)
+  const success = await saveRecipeData();
+
+  deleteRecipeBtnEl.innerText = "🗑️ Eliminar Producto";
+  deleteRecipeBtnEl.disabled = false;
+
+  if (success) {
+    closeRecipeEditor();
+    
+    // Select first recipe or clear if empty
+    if (RECIPES.length > 0) {
+      activeRecipeId = RECIPES[0].id;
+    } else {
+      activeRecipeId = "";
+    }
+    
+    renderCategoryTabs();
+    renderSidebar();
+    
+    if (activeRecipeId) {
+      selectRecipe(activeRecipeId);
+    } else {
+      // Clear view if no recipes left
+      recipeTitleEl.innerText = "Sin recetas";
+      recipeTaglineEl.innerText = "No hay productos disponibles. Crea uno nuevo.";
+      categoryBadgeEl.innerText = "";
+      categoryBadgeEl.className = "badge";
+      ingredientsContainerEl.innerHTML = `<div class="no-results" style="padding: 2rem;">No hay recetas registradas. Usa el botón "+ Nuevo" en el sidebar.</div>`;
+      photoContainerEl.innerHTML = "";
+    }
   }
 }
 

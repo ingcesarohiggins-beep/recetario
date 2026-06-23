@@ -238,7 +238,7 @@ let activeSize = "normal"; // 'kids', 'normal', 'grande'
 let activeLayerFilter = "all"; // 'all', 'base', 'centro', 'decoracion'
 let isKitchenMode = false;
 let checkedIngredients = {}; // Maps "recipeId-size-layer-index" to boolean
-let apiWebUrl = localStorage.getItem("el_cholao_recetario_api_url") || "";
+const apiWebUrl = "https://script.google.com/macros/s/AKfycbzWrnuxbGQ6wGExYGKlTgItv1dqnJs0rowFidayT6WBsdzXMipirWN9cZKiAli5qXXKYA/exec";
 
 // Editor Form State
 let editingRecipe = null;
@@ -250,9 +250,6 @@ let categoryBadgeEl, printBtnEl, printAllBtnEl, kitchenModeToggleEl, recetarioCo
 let cupLayerDecoracion, cupLayerCentro, cupLayerBase, cupVisualEl, ingredientsContainerEl;
 let sizeTabsEl, photoContainerEl, photoSizeBadgeEl;
 
-// Settings elements
-let settingsDrawerEl, settingsToggleBtnEl, closeSettingsBtnEl, apiUrlInputEl, saveApiUrlBtnEl, connectionStatusPillEl, syncActionsBoxEl, initializeDbBtnEl, forceFetchBtnEl;
-
 // Editor Elements
 let editRecipeBtnEl, recipeEditorModalEl, closeEditorBtnEl, cancelEditBtnEl, saveRecipeBtnEl;
 let editorRecipeNameEl, editTaglineEl, editEmojiEl, editCategoryEl, editorIngredientsListEl, addIngredientRowBtnEl;
@@ -261,9 +258,6 @@ let editorRecipeNameEl, editTaglineEl, editEmojiEl, editCategoryEl, editorIngred
 function init() {
   bindDOMElements();
   setupEventListeners();
-  
-  // Set current input value
-  apiUrlInputEl.value = apiWebUrl;
   
   // Try connecting or fallback to localStorage / defaults
   loadRecipeData();
@@ -292,17 +286,6 @@ function bindDOMElements() {
   cupVisualEl = document.getElementById("cup-visual");
   ingredientsContainerEl = document.getElementById("ingredients-container");
 
-  // Settings
-  settingsDrawerEl = document.getElementById("settings-drawer");
-  settingsToggleBtnEl = document.getElementById("settings-toggle-btn");
-  closeSettingsBtnEl = document.getElementById("close-settings-btn");
-  apiUrlInputEl = document.getElementById("api-url-input");
-  saveApiUrlBtnEl = document.getElementById("save-api-url-btn");
-  connectionStatusPillEl = document.getElementById("connection-status-pill");
-  syncActionsBoxEl = document.getElementById("sync-actions-box");
-  initializeDbBtnEl = document.getElementById("initialize-db-btn");
-  forceFetchBtnEl = document.getElementById("force-fetch-btn");
-
   // Editor
   editRecipeBtnEl = document.getElementById("edit-recipe-btn");
   recipeEditorModalEl = document.getElementById("recipe-editor-modal");
@@ -317,16 +300,9 @@ function bindDOMElements() {
   addIngredientRowBtnEl = document.getElementById("add-ingredient-row-btn");
 }
 
-// Update connection pill visual state
+// Update connection pill visual state (no-op since database settings are now internal)
 function updateConnectionStatus(state, text) {
-  connectionStatusPillEl.className = `connection-status-pill ${state}`;
-  connectionStatusPillEl.querySelector(".status-text").innerText = text;
-  
-  if (state === "connected") {
-    syncActionsBoxEl.style.display = "block";
-  } else {
-    syncActionsBoxEl.style.display = "none";
-  }
+  console.log(`Conexión Base de Datos: ${text} (${state})`);
 }
 
 // Load recipes: from Sheets API, or fallback to localStorage, or fallback to DEFAULT_RECIPES
@@ -463,50 +439,7 @@ function setupEventListeners() {
     setLayerFilter(nextFilter);
   });
 
-  // Settings Drawer Toggle
-  settingsToggleBtnEl.addEventListener("click", () => {
-    settingsDrawerEl.classList.add("open");
-  });
 
-  closeSettingsBtnEl.addEventListener("click", () => {
-    settingsDrawerEl.classList.remove("open");
-  });
-
-  // Save API URL
-  saveApiUrlBtnEl.addEventListener("click", () => {
-    apiWebUrl = apiUrlInputEl.value.trim();
-    if (apiWebUrl) {
-      localStorage.setItem("el_cholao_recetario_api_url", apiWebUrl);
-    } else {
-      localStorage.removeItem("el_cholao_recetario_api_url");
-    }
-    settingsDrawerEl.classList.remove("open");
-    loadRecipeData();
-  });
-
-  // Initialize DB in Sheets
-  initializeDbBtnEl.addEventListener("click", async () => {
-    if (!apiWebUrl) return;
-    if (confirm("¿Estás seguro de que quieres inicializar Google Sheets? Esto sobrescribirá cualquier receta existente en la hoja con las 7 recetas de fábrica de Cholaos.")) {
-      initializeDbBtnEl.innerText = "Inicializando...";
-      initializeDbBtnEl.disabled = true;
-      
-      RECIPES = JSON.parse(JSON.stringify(DEFAULT_RECIPES));
-      const success = await saveRecipeData();
-      
-      initializeDbBtnEl.innerText = "Inicializar Datos por Defecto";
-      initializeDbBtnEl.disabled = false;
-      if (success) {
-        alert("¡Base de datos de Google Sheets inicializada con éxito!");
-      }
-    }
-  });
-
-  // Force Fetch
-  forceFetchBtnEl.addEventListener("click", () => {
-    loadRecipeData();
-    settingsDrawerEl.classList.remove("open");
-  });
 
   // Toggle Kitchen Mode
   kitchenModeToggleEl.addEventListener("click", () => {

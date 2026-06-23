@@ -15,18 +15,7 @@
       <h1>EL CHOLAO - RECETARIO</h1>
     </div>
     
-    <!-- Status indicator for Google Sheets connection -->
-    <div class="connection-status-pill" id="connection-status-pill">
-      <span class="status-dot"></span>
-      <span class="status-text">Cargando base de datos...</span>
-    </div>
-
     <div class="header-actions">
-      <!-- Connection Settings Toggle -->
-      <button class="btn btn-secondary" id="settings-toggle-btn">
-        <span>⚙️</span> Base de Datos
-      </button>
-
       <!-- Toggle Kitchen Mode / Modo Cocina -->
       <button class="btn btn-toggle" id="kitchen-mode-toggle">
         <span class="toggle-icon">🍳</span>
@@ -49,32 +38,6 @@
       </button>
     </div>
   </header>
-
-  <!-- Database Connection Settings Drawer -->
-  <div class="settings-drawer" id="settings-drawer">
-    <div class="drawer-header">
-      <h3>Configuración de Base de Datos</h3>
-      <button class="close-btn" id="close-settings-btn">&times;</button>
-    </div>
-    <div class="drawer-content">
-      <p class="settings-help">Conecta el recetario con tu Google Sheets para almacenar y sincronizar recetas en la nube de forma gratuita.</p>
-      
-      <div class="form-group">
-        <label for="api-url-input">Google Apps Script Web App URL:</label>
-        <input type="text" id="api-url-input" class="form-control" placeholder="https://script.google.com/macros/s/.../exec">
-      </div>
-      
-      <button class="btn btn-primary w-100" id="save-api-url-btn">Guardar y Conectar</button>
-      
-      <div class="sync-actions-box" id="sync-actions-box" style="display:none;">
-        <hr class="settings-divider">
-        <h4>Acciones de Sincronización</h4>
-        <p class="settings-help">Si tu hoja de Google Sheets está vacía, inicialízala con las 7 recetas de fábrica de Cholaos.</p>
-        <button class="btn btn-secondary w-100" id="initialize-db-btn">Inicializar Datos por Defecto</button>
-        <button class="btn btn-secondary w-100" id="force-fetch-btn" style="margin-top: 0.5rem;">Descargar Recetas de Sheets</button>
-      </div>
-    </div>
-  </div>
 
   <!-- Interactive Recetario Container -->
   <main class="main-content" id="recetario-container">

@@ -271,7 +271,8 @@ function doGet(e) {
         const [utHeaders, ...utRows] = utensilsData;
         utensils = utRows.map(row => ({
           id: row[0],
-          name: row[1]
+          name: row[1],
+          type: row[2] || "utensilio"
         }));
       }
       
@@ -369,10 +370,10 @@ function doPost(e) {
       
       const utensilsSheet = ss.getSheetByName("Utensilios") || ss.insertSheet("Utensilios");
       utensilsSheet.clear();
-      utensilsSheet.appendRow(["id", "name"]);
+      utensilsSheet.appendRow(["id", "name", "type"]);
       
       utensils.forEach(u => {
-        utensilsSheet.appendRow([u.id, u.name]);
+        utensilsSheet.appendRow([u.id, u.name, u.type || "utensilio"]);
       });
       
       return createJsonResponse({ status: "success", message: "Utensilios guardados con éxito en Google Sheets" });

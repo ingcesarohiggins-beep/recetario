@@ -451,12 +451,12 @@ async function saveRecipeData() {
     });
     
     // With no-cors, we can't read the response directly, but we assume success if no error was thrown.
-    // To be safer, we can alert the user and trigger a background fetch to verify.
-    setTimeout(loadRecipeData, 1500); // Reload data in background to verify
+    updateConnectionStatus("connected", "Sheets Sincronizado");
     return true;
   } catch (err) {
     console.error("Failed saving to Google Sheets:", err);
     alert("Error al guardar en Google Sheets. Se guardó copia local en el navegador.");
+    updateConnectionStatus("disconnected", "Error al Guardar");
     return false;
   }
 }
@@ -1858,10 +1858,10 @@ async function saveUtensilsData() {
         utensils: UTENSILS
       })
     });
-    // CORS bypass fetch verification in background
-    setTimeout(loadRecipeData, 1500);
+    updateConnectionStatus("connected", "Sheets Sincronizado");
   } catch (err) {
     console.error("Failed saving utensils to Google Sheets:", err);
+    updateConnectionStatus("disconnected", "Error al Guardar");
   }
 }
 

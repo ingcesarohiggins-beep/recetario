@@ -231,6 +231,18 @@ const DEFAULT_RECIPES = [
   }
 ];
 
+// Helper function to return default presentations list based on category name
+function getPresentationsByCategory(category) {
+  const cat = (category || "").toLowerCase().trim();
+  if (cat.includes("cremolada") || cat.includes("frappé") || cat.includes("frappe") || cat.includes("milkshake")) {
+    return "Normal (12 oz), Grande (16 oz)";
+  } else if (cat.includes("comida")) {
+    return "Porción Única";
+  } else {
+    return "Kids (10 oz), Normal (12 oz), Grande (16 oz)";
+  }
+}
+
 // App State
 let RECIPES = JSON.parse(JSON.stringify(DEFAULT_RECIPES));
 let activeRecipeId = "original";
@@ -361,6 +373,12 @@ async function loadRecipeData() {
     }
   }
   
+  RECIPES.forEach(r => {
+    if (!r.presentations) {
+      r.presentations = getPresentationsByCategory(r.category || "");
+    }
+  });
+
   renderCategoryTabs();
   renderSidebar();
   selectRecipe(activeRecipeId);
@@ -570,9 +588,53 @@ function selectRecipe(id) {
   // Reset cup filter
   setLayerFilter("all");
 
+  // Render size tabs dynamically
+  renderSizeTabs();
+
   // Render recipe steps & image
   renderRecipeContent();
   renderProductPhoto();
+}
+
+// Render size selector tabs dynamically based on recipe presentations
+function renderSizeTabs() {
+  const recipe = RECIPES.find(r => r.id === activeRecipeId);
+  if (!recipe) return;
+
+  const sizes = recipe.presentations ? recipe.presentations.split(",").map(s => s.trim()) : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
+  
+  sizeTabsEl.innerHTML = "";
+  
+  const selectorContainer = document.querySelector(".size-selector-container");
+  if (sizes.length <= 1) {
+    if (selectorContainer) selectorContainer.style.display = "none";
+    activeSize = "kids"; // maps to first slot
+  } else {
+    if (selectorContainer) selectorContainer.style.display = "flex";
+    
+    // Validate active size selection key
+    const sizeKeys = ["kids", "normal", "grande"];
+    let isValid = false;
+    sizes.forEach((sz, idx) => {
+      if (idx < sizeKeys.length && sizeKeys[idx] === activeSize) {
+        isValid = true;
+      }
+    });
+    
+    if (!isValid) {
+      activeSize = "kids"; // fallback to first slot
+    }
+
+    sizes.forEach((sz, idx) => {
+      if (idx >= sizeKeys.length) return;
+      const key = sizeKeys[idx];
+      const btn = document.createElement("button");
+      btn.className = `size-tab ${key === activeSize ? "active" : ""}`;
+      btn.dataset.size = key;
+      btn.innerText = sz;
+      sizeTabsEl.appendChild(btn);
+    });
+  }
 }
 
 // Set layer filtering (when clicking on visual cup or filter pills)
@@ -681,8 +743,12 @@ function renderProductPhoto() {
   const recipe = RECIPES.find(r => r.id === activeRecipeId);
   if (!recipe) return;
 
-  const sizeLabelMap = { kids: "10 oz", normal: "12 oz", grande: "16 oz" };
-  photoSizeBadgeEl.innerText = sizeLabelMap[activeSize];
+  const sizes = recipe.presentations ? recipe.presentations.split(",").map(s => s.trim()) : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
+  const sizeKeys = ["kids", "normal", "grande"];
+  const activeIdx = sizeKeys.indexOf(activeSize);
+  const sizeLabel = activeIdx !== -1 && activeIdx < sizes.length ? sizes[activeIdx] : "Standard";
+
+  photoSizeBadgeEl.innerText = sizeLabel;
 
   // Retrieve correct size photo link
   let photoUrl = "";
@@ -691,12 +757,12 @@ function renderProductPhoto() {
   else if (activeSize === "grande") photoUrl = recipe.image_grande;
 
   if (photoUrl) {
-    photoContainerEl.innerHTML = `<img src="${photoUrl}" alt="${recipe.name} ${sizeLabelMap[activeSize]}" class="photo-img">`;
+    photoContainerEl.innerHTML = `<img src="${photoUrl}" alt="${recipe.name} ${sizeLabel}" class="photo-img">`;
   } else {
     photoContainerEl.innerHTML = `
       <div class="photo-placeholder">
         <span class="photo-placeholder-icon">📸</span>
-        <p>No hay foto registrada para el tamaño <strong>${sizeLabelMap[activeSize]}</strong>.</p>
+        <p>No hay foto registrada para el tamaño <strong>${sizeLabel}</strong>.</p>
         <button class="btn btn-secondary" style="font-size: 0.68rem; padding: 0.35rem 0.65rem;" onclick="openRecipeEditor()">Subir Foto</button>
       </div>
     `;
@@ -732,6 +798,12 @@ function openRecipeEditor() {
   editTaglineEl.value = editingRecipe.tagline;
   editEmojiEl.value = editingRecipe.emoji;
   editCategoryEl.value = editingRecipe.category;
+  
+  // Set presentations input value
+  if (!editingRecipe.presentations) {
+    editingRecipe.presentations = getPresentationsByCategory(editingRecipe.category);
+  }
+  document.getElementById("edit-presentations").value = editingRecipe.presentations;
   
   // Set default active editor layer tab
   activeEditorLayer = "base";
@@ -805,21 +877,34 @@ function renderCategoryTabs() {
 function renderPhotoUploadPreviews() {
   if (!editingRecipe) return;
 
-  const sizes = ["kids", "normal", "grande"];
-  sizes.forEach(size => {
-    const previewEl = document.getElementById(`preview-upload-${size}`);
-    const key = `image_${size}`;
-    const url = editingRecipe[key];
+  const sizes = editingRecipe.presentations ? editingRecipe.presentations.split(",").map(s => s.trim()) : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
+  const sizeKeys = ["kids", "normal", "grande"];
 
-    if (url) {
-      previewEl.innerHTML = `<img src="${url}" alt="Preview ${size}">`;
+  sizeKeys.forEach((key, idx) => {
+    const cardEl = document.querySelector(`.photo-upload-card[data-size="${key}"]`);
+    if (idx < sizes.length) {
+      if (cardEl) {
+        cardEl.style.display = "flex";
+        const titleEl = cardEl.querySelector(".upload-title");
+        if (titleEl) titleEl.innerText = sizes[idx];
+      }
+      
+      const previewEl = document.getElementById(`preview-upload-${key}`);
+      const imgKey = `image_${key}`;
+      const url = editingRecipe[imgKey];
+
+      if (url) {
+        previewEl.innerHTML = `<img src="${url}" alt="Preview ${key}">`;
+      } else {
+        previewEl.innerHTML = `<span>Sin imagen</span>`;
+      }
+      
+      // Reset progress bar
+      document.getElementById(`progress-${key}`).style.width = "0%";
+      document.getElementById(`progress-${key}`).parentElement.style.display = "none";
     } else {
-      previewEl.innerHTML = `<span>Sin imagen</span>`;
+      if (cardEl) cardEl.style.display = "none";
     }
-    
-    // Reset progress bar
-    document.getElementById(`progress-${size}`).style.width = "0%";
-    document.getElementById(`progress-${size}`).parentElement.style.display = "none";
   });
 }
 
@@ -936,16 +1021,17 @@ function saveEditorIngredientsState() {
   rows.forEach(row => {
     const name = row.querySelector(".edit-ing-name").value.trim();
     const instruction = row.querySelector(".edit-ing-instruction").value.trim();
-    const kidsAmt = row.querySelector(".edit-ing-amount-kids").value.trim();
-    const normAmt = row.querySelector(".edit-ing-amount-normal").value.trim();
-    const granAmt = row.querySelector(".edit-ing-amount-grande").value.trim();
+    
+    const kidsEl = row.querySelector(".edit-ing-amount-kids");
+    const normEl = row.querySelector(".edit-ing-amount-normal");
+    const granEl = row.querySelector(".edit-ing-amount-grande");
 
     updatedIngredients.push({
       name: name,
       amounts: {
-        kids: kidsAmt,
-        normal: normAmt,
-        grande: granAmt
+        kids: kidsEl ? kidsEl.value.trim() : "",
+        normal: normEl ? normEl.value.trim() : "",
+        grande: granEl ? granEl.value.trim() : ""
       },
       instruction: instruction
     });
@@ -966,6 +1052,9 @@ function renderEditorIngredients() {
     return;
   }
 
+  const sizes = editingRecipe.presentations ? editingRecipe.presentations.split(",").map(s => s.trim()) : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
+  const sizeKeys = ["kids", "normal", "grande"];
+
   ingredients.forEach((ing, index) => {
     const row = document.createElement("div");
     row.className = "editor-row";
@@ -978,6 +1067,19 @@ function renderEditorIngredients() {
     row.addEventListener("dragleave", handleDragLeave);
     row.addEventListener("drop", handleDrop);
     row.addEventListener("dragend", handleDragEnd);
+
+    let sizeInputsHtml = "";
+    sizes.forEach((sz, idx) => {
+      if (idx >= sizeKeys.length) return;
+      const key = sizeKeys[idx];
+      const val = ing.amounts ? (ing.amounts[key] || "") : "";
+      sizeInputsHtml += `
+        <div class="editor-size-input-group">
+          <span>${sz}</span>
+          <input type="text" class="form-control edit-ing-amount-${key}" placeholder="Cant." value="${val}">
+        </div>
+      `;
+    });
 
     row.innerHTML = `
       <!-- Reorder Arrows -->
@@ -996,21 +1098,10 @@ function renderEditorIngredients() {
         </div>
       </div>
       
-      <!-- Right Column: Portions for the 3 cup sizes -->
+      <!-- Right Column: Portions for the active presentations -->
       <div class="editor-col-right">
         <div class="editor-size-amounts">
-          <div class="editor-size-input-group">
-            <span>Kids (10oz)</span>
-            <input type="text" class="form-control edit-ing-amount-kids" placeholder="Cant." value="${ing.amounts ? (ing.amounts.kids || "") : ""}">
-          </div>
-          <div class="editor-size-input-group">
-            <span>Norm (12oz)</span>
-            <input type="text" class="form-control edit-ing-amount-normal" placeholder="Cant." value="${ing.amounts ? (ing.amounts.normal || "") : ""}">
-          </div>
-          <div class="editor-size-input-group">
-            <span>Gran (16oz)</span>
-            <input type="text" class="form-control edit-ing-amount-grande" placeholder="Cant." value="${ing.amounts ? (ing.amounts.grande || "") : ""}">
-          </div>
+          ${sizeInputsHtml}
         </div>
       </div>
       
@@ -1104,6 +1195,7 @@ function createNewBlankRecipe() {
     image_kids: "",
     image_normal: "",
     image_grande: "",
+    presentations: "Kids (10 oz), Normal (12 oz), Grande (16 oz)",
     layers: {
       base: [],
       centro: [],
@@ -1116,6 +1208,7 @@ function createNewBlankRecipe() {
   editTaglineEl.value = "";
   editEmojiEl.value = "🍧";
   editCategoryEl.value = "";
+  document.getElementById("edit-presentations").value = editingRecipe.presentations;
 
   activeEditorLayer = "base";
   document.querySelectorAll(".layer-editor-tab").forEach(tab => {
@@ -1137,9 +1230,10 @@ async function saveEditedRecipe() {
   const newTagline = editTaglineEl.value.trim();
   const newEmoji = editEmojiEl.value.trim();
   const newCategory = editCategoryEl.value.trim();
+  const newPresentations = document.getElementById("edit-presentations").value.trim();
 
-  if (!newName || !newCategory) {
-    alert("El Nombre del Producto y la Categoría son requeridos.");
+  if (!newName || !newCategory || !newPresentations) {
+    alert("El Nombre, la Categoría y las Presentaciones son requeridos.");
     return;
   }
 
@@ -1148,6 +1242,7 @@ async function saveEditedRecipe() {
   editingRecipe.tagline = newTagline || "Escribe un eslogan corto";
   editingRecipe.emoji = newEmoji || "🍧";
   editingRecipe.category = newCategory;
+  editingRecipe.presentations = newPresentations;
   
   // Capitalize category name for label
   editingRecipe.categoryLabel = newCategory.charAt(0).toUpperCase() + newCategory.slice(1);
@@ -1204,18 +1299,36 @@ function preparePrintSingle(recipeId) {
   const recipe = RECIPES.find(r => r.id === recipeId);
   if (!recipe) return;
 
+  const sizes = recipe.presentations ? recipe.presentations.split(",").map(s => s.trim()) : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
+  const sizeKeys = ["kids", "normal", "grande"];
+
   const renderPrintRows = (layerKey) => {
     const items = recipe.layers[layerKey] || [];
-    return items.map(item => `
-      <tr>
-        <td><strong>${item.name}</strong></td>
-        <td style="text-align:center;">${item.amounts.kids || "-"}</td>
-        <td style="text-align:center;">${item.amounts.normal || "-"}</td>
-        <td style="text-align:center;">${item.amounts.grande || "-"}</td>
-        <td>${item.instruction || ""}</td>
-      </tr>
-    `).join("");
+    return items.map(item => {
+      let amountsHtml = "";
+      sizes.forEach((sz, idx) => {
+        if (idx >= sizeKeys.length) return;
+        const key = sizeKeys[idx];
+        const val = item.amounts ? (item.amounts[key] || "-") : "-";
+        amountsHtml += `<td style="text-align:center;">${val}</td>`;
+      });
+
+      return `
+        <tr>
+          <td><strong>${item.name}</strong></td>
+          ${amountsHtml}
+          <td>${item.instruction || ""}</td>
+        </tr>
+      `;
+    }).join("");
   };
+
+  let tableHeadersHtml = `<th style="width: 25%">Ingrediente</th>`;
+  sizes.forEach((sz, idx) => {
+    if (idx >= sizeKeys.length) return;
+    tableHeadersHtml += `<th style="text-align:center;">${sz}</th>`;
+  });
+  tableHeadersHtml += `<th style="width: 30%">Instrucción de Ensamble</th>`;
 
   const html = `
     <div class="print-page">
@@ -1230,11 +1343,7 @@ function preparePrintSingle(recipeId) {
         <table class="print-table">
           <thead>
             <tr>
-              <th style="width: 25%">Ingrediente</th>
-              <th style="width: 15%; text-align:center;">Kids (10 oz)</th>
-              <th style="width: 15%; text-align:center;">Normal (12 oz)</th>
-              <th style="width: 15%; text-align:center;">Grande (16 oz)</th>
-              <th style="width: 30%">Instrucción de Ensamble</th>
+              ${tableHeadersHtml}
             </tr>
           </thead>
           <tbody>
@@ -1246,11 +1355,7 @@ function preparePrintSingle(recipeId) {
         <table class="print-table">
           <thead>
             <tr>
-              <th style="width: 25%">Ingrediente</th>
-              <th style="width: 15%; text-align:center;">Kids (10 oz)</th>
-              <th style="width: 15%; text-align:center;">Normal (12 oz)</th>
-              <th style="width: 15%; text-align:center;">Grande (16 oz)</th>
-              <th style="width: 30%">Instrucción de Ensamble</th>
+              ${tableHeadersHtml}
             </tr>
           </thead>
           <tbody>
@@ -1262,11 +1367,7 @@ function preparePrintSingle(recipeId) {
         <table class="print-table">
           <thead>
             <tr>
-              <th style="width: 25%">Ingrediente</th>
-              <th style="width: 15%; text-align:center;">Kids (10 oz)</th>
-              <th style="width: 15%; text-align:center;">Normal (12 oz)</th>
-              <th style="width: 15%; text-align:center;">Grande (16 oz)</th>
-              <th style="width: 30%">Instrucción de Ensamble</th>
+              ${tableHeadersHtml}
             </tr>
           </thead>
           <tbody>
@@ -1278,7 +1379,7 @@ function preparePrintSingle(recipeId) {
       <div class="print-notes">
         <p><strong>Reglas Especiales de Preparación:</strong></p>
         <ul>
-          <li><strong>Jarabes base:</strong> 1 vuelta en Kids, 2 vueltas en Normal, y 3 vueltas en Grande.</li>
+          <li><strong>Jarabes base:</strong> 1 vuelta en Kids, 2 vueltas en Normal, y 3 vueltas en Grande (según tamaños del producto).</li>
           <li><strong>Maracuyá:</strong> Agregar la cucharada al borde del vaso (no al centro) después de la gelatina para lograr un acabado visualmente atractivo.</li>
           <li><strong>Banana (Centro):</strong> Llenar en rodajas hasta casi el borde (1 dedo antes del tope) para sostener firmemente la crema chantilly.</li>
           <li><strong>Decoración "Mitad":</strong> Cuando se indica mitad arriba, colocar un ingrediente a un lado superior y el otro al lado opuesto del vaso.</li>
@@ -1291,23 +1392,41 @@ function preparePrintSingle(recipeId) {
   printAreaEl.innerHTML = html;
 }
 
-// Prepare print area for all 7 recipes (creates 7 pages for printing a booklet)
+// Prepare print area for all recipes (creates booklet)
 function preparePrintAll() {
   let html = `<h1 class="print-booklet-title">RECETARIO COMPLETO DE PREPARACIÓN DE CHOLAOS</h1>`;
-  
+  const sizeKeys = ["kids", "normal", "grande"];
+
   RECIPES.forEach((recipe, idx) => {
+    const sizes = recipe.presentations ? recipe.presentations.split(",").map(s => s.trim()) : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
+
     const renderPrintRows = (layerKey) => {
       const items = recipe.layers[layerKey] || [];
-      return items.map(item => `
-        <tr>
-          <td><strong>${item.name}</strong></td>
-          <td style="text-align:center;">${item.amounts.kids || "-"}</td>
-          <td style="text-align:center;">${item.amounts.normal || "-"}</td>
-          <td style="text-align:center;">${item.amounts.grande || "-"}</td>
-          <td>${item.instruction || ""}</td>
-        </tr>
-      `).join("");
+      return items.map(item => {
+        let amountsHtml = "";
+        sizes.forEach((sz, idx) => {
+          if (idx >= sizeKeys.length) return;
+          const key = sizeKeys[idx];
+          const val = item.amounts ? (item.amounts[key] || "-") : "-";
+          amountsHtml += `<td style="text-align:center;">${val}</td>`;
+        });
+
+        return `
+          <tr>
+            <td><strong>${item.name}</strong></td>
+            ${amountsHtml}
+            <td>${item.instruction || ""}</td>
+          </tr>
+        `;
+      }).join("");
     };
+
+    let tableHeadersHtml = `<th style="width: 25%">Ingrediente</th>`;
+    sizes.forEach((sz, idx) => {
+      if (idx >= sizeKeys.length) return;
+      tableHeadersHtml += `<th style="text-align:center;">${sz}</th>`;
+    });
+    tableHeadersHtml += `<th style="width: 30%">Instrucción de Ensamble</th>`;
 
     html += `
       <div class="print-page ${idx > 0 ? "page-break" : ""}">
@@ -1322,11 +1441,7 @@ function preparePrintAll() {
           <table class="print-table">
             <thead>
               <tr>
-                <th style="width: 25%">Ingrediente</th>
-                <th style="width: 15%; text-align:center;">Kids (10 oz)</th>
-                <th style="width: 15%; text-align:center;">Normal (12 oz)</th>
-                <th style="width: 15%; text-align:center;">Grande (16 oz)</th>
-                <th style="width: 30%">Instrucción de Ensamble</th>
+                ${tableHeadersHtml}
               </tr>
             </thead>
             <tbody>
@@ -1338,11 +1453,7 @@ function preparePrintAll() {
           <table class="print-table">
             <thead>
               <tr>
-                <th style="width: 25%">Ingrediente</th>
-                <th style="width: 15%; text-align:center;">Kids (10 oz)</th>
-                <th style="width: 15%; text-align:center;">Normal (12 oz)</th>
-                <th style="width: 15%; text-align:center;">Grande (16 oz)</th>
-                <th style="width: 30%">Instrucción de Ensamble</th>
+                ${tableHeadersHtml}
               </tr>
             </thead>
             <tbody>
@@ -1354,11 +1465,7 @@ function preparePrintAll() {
           <table class="print-table">
             <thead>
               <tr>
-                <th style="width: 25%">Ingrediente</th>
-                <th style="width: 15%; text-align:center;">Kids (10 oz)</th>
-                <th style="width: 15%; text-align:center;">Normal (12 oz)</th>
-                <th style="width: 15%; text-align:center;">Grande (16 oz)</th>
-                <th style="width: 30%">Instrucción de Ensamble</th>
+                ${tableHeadersHtml}
               </tr>
             </thead>
             <tbody>
@@ -1368,7 +1475,7 @@ function preparePrintAll() {
         </div>
         
         <div class="print-notes">
-          <p><strong>Nota:</strong> Respeta las vueltas de jarabe (1 en Kids, 2 en Normal, 3 en Grande) y la colocación de la banana a 1 dedo del tope.</p>
+          <p><strong>Nota:</strong> Respeta las vueltas de jarabe y la colocación de la banana a 1 dedo del tope según las especificaciones del vaso.</p>
           <p style="margin-top: 10px; font-size: 7.5pt; color: #666;">Página ${idx + 1} de ${RECIPES.length} - El Cholao Oficial.</p>
         </div>
       </div>

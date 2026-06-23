@@ -35,17 +35,17 @@ function setupDatabase() {
     recetasSheet.appendRow([
       "id", "name", "tagline", "category", "categoryLabel", 
       "bgColor", "themeColor", "emoji", 
-      "image_kids", "image_normal", "image_grande"
+      "image_kids", "image_normal", "image_grande", "presentations"
     ]);
     
     const defaultRecipes = [
-      ["original", "Cholao Original", "El clásico de clásicos con abundante Milo y fresa", "clasico", "Clásico", "linear-gradient(135deg, #ff4757 0%, #ff6b81 100%)", "#ff4757", "🍓", "", "", ""],
-      ["mkr", "Cholao Mkr", "El toque especial de naranja, galleta Tentación y fudge de chocolate", "dulce", "Dulce / Especial", "linear-gradient(135deg, #eccc68 0%, #ff7f50 100%)", "#ff7f50", "🍪", "", "", ""],
-      ["tropical", "Cholao Tropical", "Explosión de jarabe de mango con doble jarabe de fresa", "frutal", "Frutal", "linear-gradient(135deg, #ffa502 0%, #ff6348 100%)", "#ffa502", "🥭", "", "", ""],
-      ["fit", "Cholao Fit", "El saludable con miel de abejas, yogurt y frutas exóticas", "fit", "Saludable / Fit", "linear-gradient(135deg, #2ed573 0%, #1e90ff 100%)", "#2ed573", "🥝", "", "", ""],
-      ["selvatico", "Cholao Selvático", "El sabor del Amazonas con aguaymanto, sandía y miel", "frutal", "Frutal", "linear-gradient(135deg, #ffa502 0%, #2ed573 100%)", "#ffa502", "🌴", "", "", ""],
-      ["menta-fresh", "Cholao Menta Fresh", "Súper refrescante con jarabe de menta y doble capa cítrica", "refrescante", "Refrescante", "linear-gradient(135deg, #10ac84 0%, #2ed573 100%)", "#10ac84", "🍃", "", "", ""],
-      ["citrus", "Cholao Citrus", "El rey de los sabores cítricos con maracuyá, mandarina y kiwi", "citrico", "Cítrico", "linear-gradient(135deg, #ffa502 0%, #ff7f50 100%)", "#ff7f50", "🍊", "", "", ""]
+      ["original", "Cholao Original", "El clásico de clásicos con abundante Milo y fresa", "clasico", "Clásico", "linear-gradient(135deg, #ff4757 0%, #ff6b81 100%)", "#ff4757", "🍓", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)"],
+      ["mkr", "Cholao Mkr", "El toque especial de naranja, galleta Tentación y fudge de chocolate", "dulce", "Dulce / Especial", "linear-gradient(135deg, #eccc68 0%, #ff7f50 100%)", "#ff7f50", "🍪", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)"],
+      ["tropical", "Cholao Tropical", "Explosión de jarabe de mango con doble jarabe de fresa", "frutal", "Frutal", "linear-gradient(135deg, #ffa502 0%, #ff6348 100%)", "#ffa502", "🥭", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)"],
+      ["fit", "Cholao Fit", "El saludable con miel de abejas, yogurt y frutas exóticas", "fit", "Saludable / Fit", "linear-gradient(135deg, #2ed573 0%, #1e90ff 100%)", "#2ed573", "🥝", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)"],
+      ["selvatico", "Cholao Selvático", "El sabor del Amazonas con aguaymanto, sandía y miel", "frutal", "Frutal", "linear-gradient(135deg, #ffa502 0%, #2ed573 100%)", "#ffa502", "🌴", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)"],
+      ["menta-fresh", "Cholao Menta Fresh", "Súper refrescante con jarabe de menta y doble capa cítrica", "refrescante", "Refrescante", "linear-gradient(135deg, #10ac84 0%, #2ed573 100%)", "#10ac84", "🍃", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)"],
+      ["citrus", "Cholao Citrus", "El rey de los sabores cítricos con maracuyá, mandarina y kiwi", "citrico", "Cítrico", "linear-gradient(135deg, #ffa502 0%, #ff7f50 100%)", "#ff7f50", "🍊", "", "", "", "Kids (10 oz), Normal (12 oz), Grande (16 oz)"]
     ];
     
     defaultRecipes.forEach(row => recetasSheet.appendRow(row));
@@ -271,14 +271,15 @@ function doPost(e) {
       recetasSheet.appendRow([
         "id", "name", "tagline", "category", "categoryLabel", 
         "bgColor", "themeColor", "emoji", 
-        "image_kids", "image_normal", "image_grande"
+        "image_kids", "image_normal", "image_grande", "presentations"
       ]);
       
       recipes.forEach(r => {
         recetasSheet.appendRow([
           r.id, r.name, r.tagline, r.category, r.categoryLabel,
           r.bgColor, r.themeColor, r.emoji,
-          r.image_kids || "", r.image_normal || "", r.image_grande || ""
+          r.image_kids || "", r.image_normal || "", r.image_grande || "",
+          r.presentations || ""
         ]);
       });
       
@@ -369,7 +370,8 @@ function doPost(e) {
         recetasSheet.getCell(rowIdx, colIdx).setValue(downloadUrl);
         return createJsonResponse({ status: "success", url: downloadUrl, message: "Imagen subida e integrada exitosamente" });
       } else {
-        return createJsonResponse({ status: "error", message: "No se encontró la receta especificada" });
+        // Receta nueva no guardada en Sheets aún. Retornamos la URL exitosa para guardarse en la acción saveAllRecipes posterior.
+        return createJsonResponse({ status: "success", url: downloadUrl, message: "Imagen subida a Drive. Se guardará en la receta al pulsar Guardar." });
       }
       
     } catch (err) {

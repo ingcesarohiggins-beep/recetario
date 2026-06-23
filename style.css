@@ -727,6 +727,9 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 0.5rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
 
 .badge-clasico { background: rgba(255, 71, 87, 0.12); color: var(--color-clasico); border: 1px solid rgba(255, 71, 87, 0.2); }
@@ -1552,4 +1555,65 @@ body {
     color: #222;
     line-height: 1.35;
   }
+}
+
+/* ==========================================
+   DRAG & DROP AND REORDER CONTROLS
+   ========================================== */
+.editor-row {
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+.editor-row:active {
+  cursor: grabbing;
+}
+
+.editor-row.dragging {
+  opacity: 0.4;
+  transform: scale(0.98);
+  border: 1px dashed var(--active-theme-color);
+  background: rgba(255, 71, 87, 0.05);
+}
+
+.editor-row.drag-over {
+  border-top: 2px solid var(--active-theme-color);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Reorder Buttons (Arrows) */
+.editor-reorder-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+  align-self: stretch;
+  padding-right: 4px;
+}
+
+.btn-reorder {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.6rem;
+  width: 22px;
+  height: 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-reorder:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.btn-reorder:disabled {
+  opacity: 0.15;
+  cursor: not-allowed;
 }

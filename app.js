@@ -252,7 +252,8 @@ let sizeTabsEl, photoContainerEl, photoSizeBadgeEl;
 
 // Editor Elements
 let editRecipeBtnEl, recipeEditorModalEl, closeEditorBtnEl, cancelEditBtnEl, saveRecipeBtnEl;
-let editorRecipeNameEl, editTaglineEl, editEmojiEl, editCategoryEl, editorIngredientsListEl, addIngredientRowBtnEl;
+let editorRecipeNameEl, editNameEl, editTaglineEl, editEmojiEl, editCategoryEl, editorIngredientsListEl, addIngredientRowBtnEl;
+let newRecipeBtnEl, categoriesListEl;
 
 // Initialize application
 function init() {
@@ -279,6 +280,7 @@ function bindDOMElements() {
   sizeTabsEl = document.getElementById("size-tabs");
   photoContainerEl = document.getElementById("photo-container");
   photoSizeBadgeEl = document.getElementById("photo-size-badge");
+  newRecipeBtnEl = document.getElementById("new-recipe-btn");
 
   cupLayerDecoracion = document.getElementById("cup-layer-decoracion");
   cupLayerCentro = document.getElementById("cup-layer-centro");
@@ -293,9 +295,11 @@ function bindDOMElements() {
   cancelEditBtnEl = document.getElementById("cancel-edit-btn");
   saveRecipeBtnEl = document.getElementById("save-recipe-btn");
   editorRecipeNameEl = document.getElementById("editor-recipe-name");
+  editNameEl = document.getElementById("edit-name");
   editTaglineEl = document.getElementById("edit-tagline");
   editEmojiEl = document.getElementById("edit-emoji");
   editCategoryEl = document.getElementById("edit-category");
+  categoriesListEl = document.getElementById("categories-list");
   editorIngredientsListEl = document.getElementById("editor-ingredients-list");
   addIngredientRowBtnEl = document.getElementById("add-ingredient-row-btn");
 }
@@ -322,6 +326,7 @@ async function loadRecipeData() {
       RECIPES = JSON.parse(JSON.stringify(DEFAULT_RECIPES));
       updateConnectionStatus("local", "Modo Local (Por Defecto)");
     }
+    renderCategoryTabs();
     renderSidebar();
     selectRecipe(activeRecipeId);
     return;
@@ -356,6 +361,7 @@ async function loadRecipeData() {
     }
   }
   
+  renderCategoryTabs();
   renderSidebar();
   selectRecipe(activeRecipeId);
 }
@@ -396,11 +402,12 @@ async function saveRecipeData() {
 function setupEventListeners() {
   // Sidebar Search
   searchInputEl.addEventListener("input", (e) => {
-    const activeTab = document.querySelector(".filter-tab.active").dataset.category;
-    renderSidebar(e.target.value, activeTab);
+    const activeTab = document.querySelector(".filter-tab.active");
+    const activeCat = activeTab ? activeTab.dataset.category : "all";
+    renderSidebar(e.target.value, activeCat);
   });
 
-  // Category filter tabs
+  // Category filter tabs (using event delegation for dynamic tabs)
   filterTabsEl.addEventListener("click", (e) => {
     if (e.target.classList.contains("filter-tab")) {
       document.querySelectorAll(".filter-tab").forEach(tab => tab.classList.remove("active"));
@@ -409,6 +416,11 @@ function setupEventListeners() {
       const category = e.target.dataset.category;
       renderSidebar(searchInputEl.value, category);
     }
+  });
+
+  // New Recipe Button
+  newRecipeBtnEl.addEventListener("click", () => {
+    createNewBlankRecipe();
   });
 
   // Cup Size selector
@@ -438,8 +450,6 @@ function setupEventListeners() {
     const nextFilter = activeLayerFilter === "base" ? "all" : "base";
     setLayerFilter(nextFilter);
   });
-
-
 
   // Toggle Kitchen Mode
   kitchenModeToggleEl.addEventListener("click", () => {
@@ -484,6 +494,7 @@ function setupEventListeners() {
   // Editor layers tabs
   document.querySelectorAll(".layer-editor-tab").forEach(tab => {
     tab.addEventListener("click", (e) => {
+      saveEditorIngredientsState();
       document.querySelectorAll(".layer-editor-tab").forEach(t => t.classList.remove("active"));
       tab.classList.add("active");
       activeEditorLayer = tab.dataset.layer;
@@ -494,6 +505,7 @@ function setupEventListeners() {
   // Add row in editor
   addIngredientRowBtnEl.addEventListener("click", () => {
     if (!editingRecipe) return;
+    saveEditorIngredientsState();
     editingRecipe.layers[activeEditorLayer].push({
       name: "",
       amounts: { kids: "", normal: "", grande: "" },
@@ -712,10 +724,11 @@ function openRecipeEditor() {
   const recipe = RECIPES.find(r => r.id === activeRecipeId);
   if (!recipe) return;
 
-  // Clone recipe into editor state to avoid editing the live object directly until they press Save
+  // Clone recipe into editor state
   editingRecipe = JSON.parse(JSON.stringify(recipe));
   
   editorRecipeNameEl.innerText = editingRecipe.name;
+  editNameEl.value = editingRecipe.name;
   editTaglineEl.value = editingRecipe.tagline;
   editEmojiEl.value = editingRecipe.emoji;
   editCategoryEl.value = editingRecipe.category;
@@ -726,10 +739,11 @@ function openRecipeEditor() {
     tab.classList.toggle("active", tab.dataset.layer === "base");
   });
 
-  // Render file previews
+  // Populate categories datalist
+  updateCategoriesDatalist();
+
+  // Render previews & ingredients
   renderPhotoUploadPreviews();
-  
-  // Render ingredient rows
   renderEditorIngredients();
 
   recipeEditorModalEl.classList.add("open");
@@ -738,6 +752,53 @@ function openRecipeEditor() {
 function closeRecipeEditor() {
   recipeEditorModalEl.classList.remove("open");
   editingRecipe = null;
+}
+
+// Populate datalist with unique categories currently in RECIPES
+function updateCategoriesDatalist() {
+  categoriesListEl.innerHTML = "";
+  const categories = new Set();
+  RECIPES.forEach(r => {
+    if (r.category) categories.add(r.category.trim());
+  });
+  categories.forEach(cat => {
+    const opt = document.createElement("option");
+    opt.value = cat;
+    categoriesListEl.appendChild(opt);
+  });
+}
+
+// Render dynamic category tabs in sidebar
+function renderCategoryTabs() {
+  const activeTab = filterTabsEl.querySelector(".filter-tab.active");
+  const previousCategory = activeTab ? activeTab.dataset.category : "all";
+  
+  filterTabsEl.innerHTML = "";
+  
+  // Render "Todos" tab
+  const allTab = document.createElement("div");
+  allTab.className = `filter-tab ${previousCategory === "all" ? "active" : ""}`;
+  allTab.dataset.category = "all";
+  allTab.innerText = "Todos";
+  filterTabsEl.appendChild(allTab);
+  
+  // Extract all unique categories
+  const categories = new Set();
+  RECIPES.forEach(r => {
+    if (r.category) categories.add(r.category.trim());
+  });
+  
+  categories.forEach(cat => {
+    const tab = document.createElement("div");
+    const isAct = previousCategory.toLowerCase() === cat.toLowerCase() ? "active" : "";
+    tab.className = `filter-tab ${isAct}`;
+    tab.dataset.category = cat;
+    
+    // Capitalize category name for label
+    const label = cat.charAt(0).toUpperCase() + cat.slice(1);
+    tab.innerText = label;
+    filterTabsEl.appendChild(tab);
+  });
 }
 
 // Render image upload cards inside the modal editor
@@ -762,81 +823,136 @@ function renderPhotoUploadPreviews() {
   });
 }
 
-// Handle Select Image file, encode as base64, post upload to Drive
+// Utility to compress image in browser using HTML5 Canvas (Resize to max 1200px and compress JPEG quality to 80%)
+function compressImage(file, maxWidth = 1200, maxHeight = 1200, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate aspect-ratio dimensions
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convert canvas output to JPEG base64 DataURL
+        const base64Data = canvas.toDataURL("image/jpeg", quality);
+        resolve(base64Data);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+}
+
+// Handle Select Image file, compress, encode as base64, post upload to Drive
 window.handleImageFileSelect = async function(event, size) {
   if (!editingRecipe) return;
   
   const file = event.target.files[0];
   if (!file) return;
 
-  // Verify connection
-  if (!apiWebUrl) {
-    alert("¡Atención! Para subir fotos en alta calidad debes tener configurada la URL de la base de datos de Google Sheets (en el panel de base de datos superior).");
-    event.target.value = "";
-    return;
-  }
-
-  // Display progress bar
   const progressBar = document.getElementById(`progress-${size}`);
   progressBar.parentElement.style.display = "block";
   progressBar.style.width = "20%";
 
   try {
-    // 1. Read file as Base64 in JavaScript
-    const reader = new FileReader();
-    reader.onload = async function() {
-      progressBar.style.width = "40%";
-      const base64String = reader.result.split(",")[1]; // Extract base64 without prefix data:*/*;base64,
-      
-      progressBar.style.width = "60%";
-      
-      // 2. Upload to Google Drive via Apps Script Web App
-      const response = await fetch(apiWebUrl, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" }, // To prevent preflight CORS problems on simple POSTs
-        body: JSON.stringify({
-          action: "uploadPhoto",
-          base64Data: base64String,
-          mimeType: file.type,
-          fileName: `${editingRecipe.id}_${size}_${Date.now()}.${file.name.split(".").pop()}`,
-          recipeId: editingRecipe.id,
-          size: size
-        })
-      });
+    progressBar.style.width = "40%";
+    
+    // Compress image to JPEG under 400KB
+    const compressedBase64DataUrl = await compressImage(file);
+    const base64String = compressedBase64DataUrl.split(",")[1];
+    
+    progressBar.style.width = "60%";
+    
+    // Upload to Google Drive via Apps Script Web App
+    const response = await fetch(apiWebUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({
+        action: "uploadPhoto",
+        base64Data: base64String,
+        mimeType: "image/jpeg",
+        fileName: `${editingRecipe.id}_${size}_${Date.now()}.jpg`,
+        recipeId: editingRecipe.id,
+        size: size
+      })
+    });
 
-      progressBar.style.width = "80%";
+    progressBar.style.width = "80%";
+    
+    const result = await response.json();
+    
+    if (result.status === "success" && result.url) {
+      progressBar.style.width = "100%";
       
-      // Since Google Apps Script Web App redirection is sometimes transparent under no-cors,
-      // here we are running with CORS handled by the Apps Script headers. Let's process JSON:
-      const result = await response.json();
+      // Update local editor object
+      editingRecipe[`image_${size}`] = result.url;
       
-      if (result.status === "success" && result.url) {
-        progressBar.style.width = "100%";
-        
-        // Update local editor object
-        editingRecipe[`image_${size}`] = result.url;
-        
-        // Update recipe preview in modal
-        renderPhotoUploadPreviews();
-        
-        // Success feedback
-        setTimeout(() => {
-          progressBar.parentElement.style.display = "none";
-        }, 1000);
-      } else {
-        throw new Error(result.message || "Failed photo uploading response");
-      }
-    };
-    reader.onerror = () => { throw new Error("File reading failed"); };
-    reader.readAsDataURL(file);
+      // Update preview in modal
+      renderPhotoUploadPreviews();
+      
+      setTimeout(() => {
+        progressBar.parentElement.style.display = "none";
+      }, 1000);
+    } else {
+      throw new Error(result.message || "Failed uploading photo");
+    }
 
   } catch (err) {
     console.error("Photo upload failed:", err);
     progressBar.style.width = "0%";
     progressBar.parentElement.style.display = "none";
-    alert("La subida de la imagen falló: " + err.toString() + "\nPor favor, verifica que la URL de tu Google Apps Script esté correctamente desplegada como Web App con acceso a 'Cualquiera'.");
+    alert("La subida de la imagen falló: " + err.toString());
   }
 };
+
+// Parse row input values and save them to editingRecipe state
+function saveEditorIngredientsState() {
+  if (!editingRecipe) return;
+  const rows = editorIngredientsListEl.querySelectorAll(".editor-row");
+  const updatedIngredients = [];
+  
+  rows.forEach(row => {
+    const name = row.querySelector(".edit-ing-name").value.trim();
+    const instruction = row.querySelector(".edit-ing-instruction").value.trim();
+    const kidsAmt = row.querySelector(".edit-ing-amount-kids").value.trim();
+    const normAmt = row.querySelector(".edit-ing-amount-normal").value.trim();
+    const granAmt = row.querySelector(".edit-ing-amount-grande").value.trim();
+
+    updatedIngredients.push({
+      name: name,
+      amounts: {
+        kids: kidsAmt,
+        normal: normAmt,
+        grande: granAmt
+      },
+      instruction: instruction
+    });
+  });
+
+  editingRecipe.layers[activeEditorLayer] = updatedIngredients;
+}
 
 // Render ingredient rows inside modal editor form based on selected layer
 function renderEditorIngredients() {
@@ -853,7 +969,23 @@ function renderEditorIngredients() {
   ingredients.forEach((ing, index) => {
     const row = document.createElement("div");
     row.className = "editor-row";
+    row.setAttribute("draggable", "true");
+    row.setAttribute("data-index", index);
+    
+    // Setup HTML5 Drag and Drop events
+    row.addEventListener("dragstart", handleDragStart);
+    row.addEventListener("dragover", handleDragOver);
+    row.addEventListener("dragleave", handleDragLeave);
+    row.addEventListener("drop", handleDrop);
+    row.addEventListener("dragend", handleDragEnd);
+
     row.innerHTML = `
+      <!-- Reorder Arrows -->
+      <div class="editor-reorder-buttons">
+        <button type="button" class="btn-reorder" onclick="moveIngredient(${index}, -1)" ${index === 0 ? "disabled" : ""}>▲</button>
+        <button type="button" class="btn-reorder" onclick="moveIngredient(${index}, 1)" ${index === ingredients.length - 1 ? "disabled" : ""}>▼</button>
+      </div>
+
       <!-- Left Column: Name & Instruction -->
       <div class="editor-col-left">
         <div class="form-group" style="margin-bottom:0.5rem;">
@@ -889,88 +1021,176 @@ function renderEditorIngredients() {
   });
 }
 
-// Delete an ingredient row in the editor
+// Delete row in editor
 window.deleteEditorIngredientRow = function(index) {
   if (!editingRecipe) return;
+  saveEditorIngredientsState();
   editingRecipe.layers[activeEditorLayer].splice(index, 1);
   renderEditorIngredients();
 };
 
-// Gather edited form values and save
+// Shifting ingredient position Up/Down
+window.moveIngredient = function(index, direction) {
+  if (!editingRecipe) return;
+  saveEditorIngredientsState();
+  
+  const list = editingRecipe.layers[activeEditorLayer];
+  const targetIndex = index + direction;
+  
+  if (targetIndex >= 0 && targetIndex < list.length) {
+    const temp = list[index];
+    list[index] = list[targetIndex];
+    list[targetIndex] = temp;
+    renderEditorIngredients();
+  }
+};
+
+// Drag & Drop HTML5 Handlers
+let draggedIndex = null;
+
+function handleDragStart(e) {
+  draggedIndex = parseInt(this.getAttribute("data-index"));
+  this.classList.add("dragging");
+  e.dataTransfer.effectAllowed = "move";
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+  this.classList.add("drag-over");
+}
+
+function handleDragLeave(e) {
+  this.classList.remove("drag-over");
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  this.classList.remove("drag-over");
+  
+  const targetIndex = parseInt(this.getAttribute("data-index"));
+  if (draggedIndex !== null && draggedIndex !== targetIndex) {
+    saveEditorIngredientsState();
+    const list = editingRecipe.layers[activeEditorLayer];
+    
+    // Splice dragged item and insert at target
+    const draggedItem = list.splice(draggedIndex, 1)[0];
+    list.splice(targetIndex, 0, draggedItem);
+    
+    renderEditorIngredients();
+  }
+}
+
+function handleDragEnd(e) {
+  this.classList.remove("dragging");
+  document.querySelectorAll(".editor-row").forEach(row => row.classList.remove("drag-over"));
+  draggedIndex = null;
+}
+
+// Open Editor in blank mode for creating new products
+function createNewBlankRecipe() {
+  const newId = "receta-" + Date.now();
+  
+  // Set defaults for a new product
+  editingRecipe = {
+    id: newId,
+    name: "Nuevo Producto",
+    tagline: "Escribe un eslogan corto",
+    category: "Otros",
+    categoryLabel: "Otros",
+    bgColor: "linear-gradient(135deg, #747d8c 0%, #2f3542 100%)", // Neutral grey gradient
+    themeColor: "#747d8c",
+    emoji: "🍧",
+    image_kids: "",
+    image_normal: "",
+    image_grande: "",
+    layers: {
+      base: [],
+      centro: [],
+      decoracion: []
+    }
+  };
+
+  editorRecipeNameEl.innerText = "Nuevo Producto";
+  editNameEl.value = "Nuevo Producto";
+  editTaglineEl.value = "";
+  editEmojiEl.value = "🍧";
+  editCategoryEl.value = "";
+
+  activeEditorLayer = "base";
+  document.querySelectorAll(".layer-editor-tab").forEach(tab => {
+    tab.classList.toggle("active", tab.dataset.layer === "base");
+  });
+
+  updateCategoriesDatalist();
+  renderPhotoUploadPreviews();
+  renderEditorIngredients();
+
+  recipeEditorModalEl.classList.add("open");
+}
+
+// Gather edited form values and save (supporting name changes, dynamic categories, and new product creation)
 async function saveEditedRecipe() {
   if (!editingRecipe) return;
 
-  // 1. Gather recipe metadata
-  editingRecipe.tagline = editTaglineEl.value.trim();
-  editingRecipe.emoji = editEmojiEl.value.trim();
-  editingRecipe.category = editCategoryEl.value;
-  
-  // Category Label
-  const categoryLabels = {
-    clasico: "Clásico",
-    frutal: "Frutal",
-    citrico: "Cítrico",
-    refrescante: "Refrescante",
-    dulce: "Dulce / Especial",
-    fit: "Saludable / Fit"
-  };
-  editingRecipe.categoryLabel = categoryLabels[editingRecipe.category] || "Otros";
+  const newName = editNameEl.value.trim();
+  const newTagline = editTaglineEl.value.trim();
+  const newEmoji = editEmojiEl.value.trim();
+  const newCategory = editCategoryEl.value.trim();
 
-  // 2. Gather ingredient row values from active editor layer (other layers are already in editingRecipe state)
-  const rows = editorIngredientsListEl.querySelectorAll(".editor-row");
-  const updatedIngredients = [];
+  if (!newName || !newCategory) {
+    alert("El Nombre del Producto y la Categoría son requeridos.");
+    return;
+  }
+
+  // Update recipe attributes
+  editingRecipe.name = newName;
+  editingRecipe.tagline = newTagline || "Escribe un eslogan corto";
+  editingRecipe.emoji = newEmoji || "🍧";
+  editingRecipe.category = newCategory;
   
+  // Capitalize category name for label
+  editingRecipe.categoryLabel = newCategory.charAt(0).toUpperCase() + newCategory.slice(1);
+
+  // Save current active layer rows
+  saveEditorIngredientsState();
+
+  // Validate ingredient names
   let hasValidationError = false;
-
-  rows.forEach((row, index) => {
-    const name = row.querySelector(".edit-ing-name").value.trim();
-    const instruction = row.querySelector(".edit-ing-instruction").value.trim();
-    const kidsAmt = row.querySelector(".edit-ing-amount-kids").value.trim();
-    const normAmt = row.querySelector(".edit-ing-amount-normal").value.trim();
-    const granAmt = row.querySelector(".edit-ing-amount-grande").value.trim();
-
-    if (!name) {
-      alert("Por favor escribe el nombre para todos los ingredientes.");
-      hasValidationError = true;
-      return;
-    }
-
-    updatedIngredients.push({
-      name: name,
-      amounts: {
-        kids: kidsAmt,
-        normal: normAmt,
-        grande: granAmt
-      },
-      instruction: instruction
+  ["base", "centro", "decoracion"].forEach(layer => {
+    editingRecipe.layers[layer].forEach(ing => {
+      if (!ing.name) {
+        alert("Todos los ingredientes deben tener un nombre.");
+        hasValidationError = true;
+      }
     });
   });
-
   if (hasValidationError) return;
 
-  // Save current active layer rows to the recipe object
-  editingRecipe.layers[activeEditorLayer] = updatedIngredients;
-
-  // 3. Find index of recipe in original RECIPES array and replace it
+  // Add new recipe to RECIPES array or update existing
   const idx = RECIPES.findIndex(r => r.id === editingRecipe.id);
   if (idx !== -1) {
     RECIPES[idx] = editingRecipe;
-    
-    saveRecipeBtnEl.innerText = "Guardando...";
-    saveRecipeBtnEl.disabled = true;
+  } else {
+    // New recipe, append to array
+    RECIPES.push(editingRecipe);
+    activeRecipeId = editingRecipe.id; // Switch active selection to new recipe
+  }
+  
+  saveRecipeBtnEl.innerText = "Guardando...";
+  saveRecipeBtnEl.disabled = true;
 
-    // 4. Save to Cloud / local storage
-    const success = await saveRecipeData();
+  // Save to Sheets / LocalStorage
+  const success = await saveRecipeData();
 
-    saveRecipeBtnEl.innerText = "Guardar Receta";
-    saveRecipeBtnEl.disabled = false;
+  saveRecipeBtnEl.innerText = "Guardar Receta";
+  saveRecipeBtnEl.disabled = false;
 
-    if (success) {
-      closeRecipeEditor();
-      // Reload lists and updates
-      renderSidebar();
-      selectRecipe(activeRecipeId);
-    }
+  if (success) {
+    closeRecipeEditor();
+    renderCategoryTabs();
+    renderSidebar();
+    selectRecipe(activeRecipeId);
   }
 }
 

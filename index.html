@@ -45,21 +45,18 @@
     <!-- Sidebar: Recipe List -->
     <aside class="sidebar">
       <div class="search-box">
-        <div class="search-wrapper">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="search-input" class="search-input" placeholder="Buscar cholao...">
+        <div class="search-wrapper" style="display: flex; gap: 0.5rem; align-items: center;">
+          <div style="position: relative; flex: 1;">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search-input" class="search-input" placeholder="Buscar producto...">
+          </div>
+          <button class="btn btn-primary" id="new-recipe-btn" style="border-radius: 10px; padding: 0.6rem 0.8rem; font-size: 0.75rem; white-space: nowrap;">➕ Nuevo</button>
         </div>
       </div>
       
       <!-- Category Filters -->
       <div class="filter-tabs" id="filter-tabs">
-        <div class="filter-tab active" data-category="all">Todos</div>
-        <div class="filter-tab" data-category="clasico">Clásicos</div>
-        <div class="filter-tab" data-category="frutal">Frutales</div>
-        <div class="filter-tab" data-category="citrico">Cítricos</div>
-        <div class="filter-tab" data-category="refrescante">Refrescantes</div>
-        <div class="filter-tab" data-category="dulce">Dulces</div>
-        <div class="filter-tab" data-category="fit">Saludables</div>
+        <!-- Rendered dynamically from JS -->
       </div>
       
       <div class="recipe-list" id="recipe-list">
@@ -155,26 +152,29 @@
       </div>
       <div class="modal-body">
         <form id="recipe-editor-form">
-          <!-- Tagline & Emoji -->
+          <!-- Name Row -->
+          <div class="form-row">
+            <div class="form-group flex-2">
+              <label for="edit-name">Nombre del Producto:</label>
+              <input type="text" id="edit-name" class="form-control" placeholder="Ej. Cholao Especial, Cremolada de Fresa..." required>
+            </div>
+          </div>
+          <!-- Tagline, Emoji & Category Row -->
           <div class="form-row">
             <div class="form-group flex-2">
               <label for="edit-tagline">Eslogan / Subtítulo:</label>
               <input type="text" id="edit-tagline" class="form-control" required>
             </div>
-            <div class="form-group">
+            <div class="form-group" style="width: 80px; flex-shrink: 0;">
               <label for="edit-emoji">Emoji:</label>
               <input type="text" id="edit-emoji" class="form-control text-center" style="font-size: 1.25rem;" maxlength="2" required>
             </div>
             <div class="form-group">
               <label for="edit-category">Categoría:</label>
-              <select id="edit-category" class="form-control">
-                <option value="clasico">Clásico</option>
-                <option value="frutal">Frutal</option>
-                <option value="citrico">Cítrico</option>
-                <option value="refrescante">Refrescante</option>
-                <option value="dulce">Dulce</option>
-                <option value="fit">Saludable/Fit</option>
-              </select>
+              <input type="text" id="edit-category" class="form-control" list="categories-list" placeholder="Ej. Cremoladas, Jugos..." required>
+              <datalist id="categories-list">
+                <!-- Dynamically populated from JS -->
+              </datalist>
             </div>
           </div>
 

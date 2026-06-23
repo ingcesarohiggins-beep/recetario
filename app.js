@@ -621,11 +621,13 @@ function setupEventListeners() {
   addUtensilFormEl.addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = newUtensilNameInputEl.value.trim();
+    const type = document.getElementById("new-utensil-type").value;
     if (!name) return;
 
     const newUtensil = {
       id: "u-" + Date.now(),
-      name: name
+      name: name,
+      type: type
     };
     UTENSILS.push(newUtensil);
     newUtensilNameInputEl.value = "";
@@ -635,6 +637,27 @@ function setupEventListeners() {
 
     // Save to Google Sheets / local backup
     await saveUtensilsData();
+  });
+
+  // Listen to vessel change in editor to toggle Centro layer tab
+  const editVesselEl = document.getElementById("edit-vessel");
+  editVesselEl.addEventListener("change", () => {
+    if (!editingRecipe) return;
+    editingRecipe.vessel = editVesselEl.value;
+    
+    // Toggle Centro tab
+    const centroTab = document.querySelector(".layer-editor-tab[data-layer='centro']");
+    if (centroTab) {
+      centroTab.style.display = editingRecipe.vessel === "plato" ? "none" : "inline-block";
+    }
+    if (editingRecipe.vessel === "plato" && activeEditorLayer === "centro") {
+      activeEditorLayer = "base";
+      document.querySelectorAll(".layer-editor-tab").forEach(t => {
+        t.classList.toggle("active", t.dataset.layer === "base");
+      });
+    }
+    
+    renderEditorIngredients();
   });
 }
 
@@ -702,6 +725,12 @@ function selectRecipe(id) {
     helpTextEl.innerText = recipe.vessel === "plato" 
       ? "Toca una capa del plato para ver solo sus ingredientes" 
       : "Toca una capa del vaso para ver solo sus ingredientes";
+  }
+
+  // Hide/show centro pill
+  const centroPill = document.querySelector(".layer-pill[data-layer='centro']");
+  if (centroPill) {
+    centroPill.style.display = recipe.vessel === "plato" ? "none" : "inline-block";
   }
 
   // Render required utensils
@@ -797,7 +826,11 @@ function renderRecipeContent() {
   const renderSection = (layerKey, displayName, emoji, accentClass) => {
     if (activeLayerFilter !== "all" && activeLayerFilter !== layerKey) return;
 
+    // A plate (food) has no "centro" layer
+    if (recipe.vessel === "plato" && layerKey === "centro") return;
+
     const layerItems = recipe.layers[layerKey];
+    if (!layerItems) return;
     
     const sectionHtml = document.createElement("div");
     sectionHtml.className = `recipe-section section-${accentClass}`;
@@ -855,9 +888,12 @@ function renderRecipeContent() {
   };
 
   // Render layers in building order: Base -> Centro -> Decoración
-  renderSection("base", "Base (Hielo y Jarabes)", "🧊", "base");
-  renderSection("centro", "Centro (Frutas y Relleno)", "🍍", "centro");
-  renderSection("decoracion", "Decoración (Toppings y Cierre)", "🍓", "decoracion");
+  const isPlate = recipe.vessel === "plato";
+  renderSection("base", isPlate ? "Base" : "Base (Hielo y Jarabes)", isPlate ? "🍽️" : "🧊", "base");
+  if (!isPlate) {
+    renderSection("centro", "Centro (Frutas y Relleno)", "🍍", "centro");
+  }
+  renderSection("decoracion", isPlate ? "Decoración" : "Decoración (Toppings y Cierre)", isPlate ? "✨" : "🍓", "decoracion");
 }
 
 // Render active size product photo
@@ -936,6 +972,12 @@ function openRecipeEditor() {
   document.querySelectorAll(".layer-editor-tab").forEach(tab => {
     tab.classList.toggle("active", tab.dataset.layer === "base");
   });
+
+  // Toggle Centro editor tab based on vessel
+  const centroTab = document.querySelector(".layer-editor-tab[data-layer='centro']");
+  if (centroTab) {
+    centroTab.style.display = (editingRecipe.vessel || "vaso") === "plato" ? "none" : "inline-block";
+  }
 
   // Populate categories datalist
   updateCategoriesDatalist();
@@ -1512,6 +1554,7 @@ function preparePrintSingle(recipeId) {
   const recipe = RECIPES.find(r => r.id === recipeId);
   if (!recipe) return;
 
+  const isPlate = recipe.vessel === "plato";
   const sizes = recipe.presentations ? recipe.presentations.split(",").map(s => s.trim()).filter(s => s !== "") : ["Kids (10 oz)", "Normal (12 oz)", "Grande (16 oz)"];
   const sizeKeys = ["kids", "normal", "grande"];
 
@@ -1552,41 +1595,67 @@ function preparePrintSingle(recipeId) {
       </div>
 
       <div class="print-recipe-body">
-        <h3>1. CAPA BASE</h3>
-        <table class="print-table">
-          <thead>
-            <tr>
-              ${tableHeadersHtml}
-            </tr>
-          </thead>
-          <tbody>
-            ${renderPrintRows("base")}
-          </tbody>
-        </table>
+        ${isPlate ? `
+          <h3>1. BASE</h3>
+          <table class="print-table">
+            <thead>
+              <tr>
+                ${tableHeadersHtml}
+              </tr>
+            </thead>
+            <tbody>
+              ${renderPrintRows("base")}
+            </tbody>
+          </table>
 
-        <h3>2. CAPA DEL CENTRO</h3>
-        <table class="print-table">
-          <thead>
-            <tr>
-              ${tableHeadersHtml}
-            </tr>
-          </thead>
-          <tbody>
-            ${renderPrintRows("centro")}
-          </tbody>
-        </table>
+          <h3>2. DECORACIÓN</h3>
+          <table class="print-table">
+            <thead>
+              <tr>
+                ${tableHeadersHtml}
+              </tr>
+            </thead>
+            <tbody>
+              ${renderPrintRows("decoracion")}
+            </tbody>
+          </table>
+        ` : `
+          <h3>1. CAPA BASE</h3>
+          <table class="print-table">
+            <thead>
+              <tr>
+                ${tableHeadersHtml}
+              </tr>
+            </thead>
+            <tbody>
+              ${renderPrintRows("base")}
+            </tbody>
+          </table>
 
-        <h3>3. CAPA DE DECORACIÓN (Superficie)</h3>
-        <table class="print-table">
-          <thead>
-            <tr>
-              ${tableHeadersHtml}
-            </tr>
-          </thead>
-          <tbody>
-            ${renderPrintRows("decoracion")}
-          </tbody>
-        </table>
+          <h3>2. CAPA DEL CENTRO</h3>
+          <table class="print-table">
+            <thead>
+              <tr>
+                ${tableHeadersHtml}
+              </tr>
+            </thead>
+            <tbody>
+              ${renderPrintRows("centro")}
+            </tbody>
+          </table>
+
+          <h3>3. CAPA DE DECORACIÓN (Superficie)</h3>
+          <table class="print-table">
+            <thead>
+              <tr>
+                ${tableHeadersHtml}
+              </tr>
+            </thead>
+            <tbody>
+              ${renderPrintRows("decoracion")}
+            </tbody>
+          </table>
+        `}
       </div>
       
       <div class="print-notes">
@@ -1641,6 +1710,8 @@ function preparePrintAll() {
     });
     tableHeadersHtml += `<th style="width: 30%">Instrucción de Ensamble</th>`;
 
+    const isPlate = recipe.vessel === "plato";
+
     html += `
       <div class="print-page ${idx > 0 ? "page-break" : ""}">
         <div class="print-header">
@@ -1650,45 +1721,71 @@ function preparePrintAll() {
         </div>
 
         <div class="print-recipe-body">
-          <h3>1. CAPA BASE</h3>
-          <table class="print-table">
-            <thead>
-              <tr>
-                ${tableHeadersHtml}
-              </tr>
-            </thead>
-            <tbody>
-              ${renderPrintRows("base")}
-            </tbody>
-          </table>
+          ${isPlate ? `
+            <h3>1. BASE</h3>
+            <table class="print-table">
+              <thead>
+                <tr>
+                  ${tableHeadersHtml}
+                </tr>
+              </thead>
+              <tbody>
+                ${renderPrintRows("base")}
+              </tbody>
+            </table>
 
-          <h3>2. CAPA DEL CENTRO</h3>
-          <table class="print-table">
-            <thead>
-              <tr>
-                ${tableHeadersHtml}
-              </tr>
-            </thead>
-            <tbody>
-              ${renderPrintRows("centro")}
-            </tbody>
-          </table>
+            <h3>2. DECORACIÓN</h3>
+            <table class="print-table">
+              <thead>
+                <tr>
+                  ${tableHeadersHtml}
+                </tr>
+              </thead>
+              <tbody>
+                ${renderPrintRows("decoracion")}
+              </tbody>
+            </table>
+          ` : `
+            <h3>1. CAPA BASE</h3>
+            <table class="print-table">
+              <thead>
+                <tr>
+                  ${tableHeadersHtml}
+                </tr>
+              </thead>
+              <tbody>
+                ${renderPrintRows("base")}
+              </tbody>
+            </table>
 
-          <h3>3. CAPA DE DECORACIÓN (Superficie)</h3>
-          <table class="print-table">
-            <thead>
-              <tr>
-                ${tableHeadersHtml}
-              </tr>
-            </thead>
-            <tbody>
-              ${renderPrintRows("decoracion")}
-            </tbody>
-          </table>
+            <h3>2. CAPA DEL CENTRO</h3>
+            <table class="print-table">
+              <thead>
+                <tr>
+                  ${tableHeadersHtml}
+                </tr>
+              </thead>
+              <tbody>
+                ${renderPrintRows("centro")}
+              </tbody>
+            </table>
+
+            <h3>3. CAPA DE DECORACIÓN (Superficie)</h3>
+            <table class="print-table">
+              <thead>
+                <tr>
+                  ${tableHeadersHtml}
+                </tr>
+              </thead>
+              <tbody>
+                ${renderPrintRows("decoracion")}
+              </tbody>
+            </table>
+          `}
         </div>
         
         <div class="print-notes">
-          <p><strong>Nota:</strong> Respeta las vueltas de jarabe y la colocación de la banana a 1 dedo del tope según las especificaciones del vaso.</p>
+          <p><strong>Nota:</strong> ${isPlate ? 'Respeta el orden de la base y decoración indicados.' : 'Respeta las vueltas de jarabe y la colocación de la banana a 1 dedo del tope según las especificaciones del vaso.'}</p>
           <p style="margin-top: 10px; font-size: 7.5pt; color: #666;">Página ${idx + 1} de ${RECIPES.length} - El Cholao Oficial.</p>
         </div>
       </div>
@@ -1721,8 +1818,12 @@ function renderUtensilsManagerList() {
   UTENSILS.forEach(u => {
     const li = document.createElement("li");
     li.className = "utensil-item-row";
+    const typeLabel = u.type === "maquina" ? "🔌 Máquina" : "🍴 Utensilio";
     li.innerHTML = `
-      <span>${u.name}</span>
+      <div>
+        <strong>${u.name}</strong>
+        <span style="font-size: 0.65rem; padding: 0.15rem 0.35rem; border-radius: 4px; background: rgba(255,255,255,0.05); margin-left: 0.5rem; color: var(--text-secondary);">${typeLabel}</span>
+      </div>
       <button type="button" class="utensil-delete-btn" onclick="deleteUtensil('${u.id}')">🗑️</button>
     `;
     utensilsListItemsEl.appendChild(li);
@@ -1767,7 +1868,7 @@ async function saveUtensilsData() {
 function renderEditorUtensilsChecklist() {
   editorUtensilsChecklistEl.innerHTML = "";
   if (UTENSILS.length === 0) {
-    editorUtensilsChecklistEl.innerHTML = `<div style="grid-column: 1/-1; padding: 0.5rem; text-align:center; color:var(--text-muted); font-size:0.75rem;">No hay utensilios. Agrégalos usando el botón de Utensilios de arriba.</div>`;
+    editorUtensilsChecklistEl.innerHTML = `<div style="grid-column: 1/-1; padding: 0.5rem; text-align:center; color:var(--text-muted); font-size:0.75rem;">No hay utensilios o máquinas registrados. Agrégalos arriba.</div>`;
     return;
   }
 
@@ -1775,16 +1876,38 @@ function renderEditorUtensilsChecklist() {
     ? editingRecipe.utensils.split(",").map(u => u.trim()) 
     : [];
 
-  UTENSILS.forEach(u => {
-    const isChecked = recipeUtensils.includes(u.id) ? "checked" : "";
-    const label = document.createElement("label");
-    label.className = "utensil-check-item";
-    label.innerHTML = `
-      <input type="checkbox" value="${u.id}" ${isChecked}>
-      <span>${u.name}</span>
-    `;
-    editorUtensilsChecklistEl.appendChild(label);
-  });
+  const maquinas = UTENSILS.filter(u => u.type === "maquina");
+  const utensilios = UTENSILS.filter(u => u.type !== "maquina");
+
+  let html = "";
+
+  if (maquinas.length > 0) {
+    html += `<div style="grid-column: 1/-1; font-size: 0.72rem; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-top: 0.25rem; margin-bottom: 0.15rem; border-bottom: 1px solid var(--border-color); padding-bottom: 2px;">🔌 Máquinas y Equipos</div>`;
+    maquinas.forEach(u => {
+      const isChecked = recipeUtensils.includes(u.id) ? "checked" : "";
+      html += `
+        <label class="utensil-check-item">
+          <input type="checkbox" value="${u.id}" ${isChecked}>
+          <span>${u.name}</span>
+        </label>
+      `;
+    });
+  }
+
+  if (utensilios.length > 0) {
+    html += `<div style="grid-column: 1/-1; font-size: 0.72rem; font-weight: bold; color: var(--text-muted); text-transform: uppercase; margin-top: 0.5rem; margin-bottom: 0.15rem; border-bottom: 1px solid var(--border-color); padding-bottom: 2px;">🍴 Utensilios</div>`;
+    utensilios.forEach(u => {
+      const isChecked = recipeUtensils.includes(u.id) ? "checked" : "";
+      html += `
+        <label class="utensil-check-item">
+          <input type="checkbox" value="${u.id}" ${isChecked}>
+          <span>${u.name}</span>
+        </label>
+      `;
+    });
+  }
+
+  editorUtensilsChecklistEl.innerHTML = html;
 }
 
 function renderRecipeUtensilsDisplay(recipe) {
@@ -1800,23 +1923,41 @@ function renderRecipeUtensilsDisplay(recipe) {
     return;
   }
 
-  let count = 0;
-  recipeUtensilIds.forEach(id => {
-    const utensil = UTENSILS.find(u => u.id === id);
-    if (utensil) {
-      count++;
-      const badge = document.createElement("span");
-      badge.className = "utensil-badge";
-      badge.innerHTML = `🛠️ ${utensil.name}`;
-      recipeUtensilsListEl.appendChild(badge);
-    }
-  });
-
-  if (count > 0) {
-    recipeUtensilsContainerEl.style.display = "block";
-  } else {
+  const activeUtensils = UTENSILS.filter(u => recipeUtensilIds.includes(u.id));
+  if (activeUtensils.length === 0) {
     recipeUtensilsContainerEl.style.display = "none";
+    return;
   }
+
+  const maquinas = activeUtensils.filter(u => u.type === "maquina");
+  const utensilios = activeUtensils.filter(u => u.type !== "maquina");
+
+  let html = "";
+
+  if (maquinas.length > 0) {
+    html += `
+      <div style="width: 100%; display: flex; flex-direction: column; gap: 0.25rem;">
+        <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">🔌 Equipos/Máquinas:</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.5rem;">
+          ${maquinas.map(u => `<span class="utensil-badge">🔌 ${u.name}</span>`).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  if (utensilios.length > 0) {
+    html += `
+      <div style="width: 100%; display: flex; flex-direction: column; gap: 0.25rem;">
+        <span style="font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">🍴 Utensilios:</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+          ${utensilios.map(u => `<span class="utensil-badge">🍴 ${u.name}</span>`).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  recipeUtensilsListEl.innerHTML = html;
+  recipeUtensilsContainerEl.style.display = "block";
 }
 
 // Start the app when content loads

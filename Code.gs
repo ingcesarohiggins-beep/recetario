@@ -183,15 +183,24 @@ function setupDatabase() {
   
   // Rellenar Utensilios si está vacía
   if (utensilsSheet.getLastRow() === 0) {
-    utensilsSheet.appendRow(["id", "name"]);
+    utensilsSheet.appendRow(["id", "name", "type"]);
     const defaultUtensils = [
-      ["u1", "Licuadora"],
-      ["u2", "Cuchara de metal"],
-      ["u3", "Cuchillo de fruta"],
-      ["u4", "Exprimidor de limón"],
-      ["u5", "Bowl para mezcla"],
-      ["u6", "Pala de hielo"],
-      ["u7", "Vaso medidor"]
+      // Máquinas
+      ["u1", "Licuadora", "maquina"],
+      ["u2", "Raspadillera", "maquina"],
+      ["u3", "Cocina", "maquina"],
+      ["u4", "Tostadora", "maquina"],
+      ["u5", "Sanduchera", "maquina"],
+      // Utensilios
+      ["u6", "Espátula de plástico", "utensilio"],
+      ["u7", "Cuchara de metal", "utensilio"],
+      ["u8", "Tabla de picar", "utensilio"],
+      ["u9", "Cuchillo de hielo", "utensilio"],
+      ["u10", "Bandeja de hielo", "utensilio"],
+      ["u11", "Cuchillo de frutas", "utensilio"],
+      ["u12", "Cuchara grande de frutas", "utensilio"],
+      ["u13", "Exprimidor de limón", "utensilio"],
+      ["u14", "Bowl para mezcla", "utensilio"]
     ];
     defaultUtensils.forEach(row => utensilsSheet.appendRow(row));
   }
